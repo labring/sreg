@@ -1,5 +1,5 @@
 builds:
-  - id: gh-rebot
+  - id: sreg
     goos:
       - linux
     goarch:
