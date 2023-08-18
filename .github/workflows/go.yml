@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
@@ -18,6 +18,11 @@ jobs:
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
+      - name: Install Dependencies
+        run: |
+          sudo apt update && sudo apt install -y gcc-aarch64-linux-gnu \
+            libbtrfs-dev libgpgme-dev libdevmapper-dev \
+            qemu-user-static binfmt-support
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v1
