@@ -62,8 +62,8 @@ func NewCopyRegistryCommand(examplePrefix string) *cobra.Command {
 		Use:   "copy SOURCE_IMAGE DST_REGISTRY",
 		Short: "copy single one image to registry",
 		Args:  cobra.ExactArgs(2),
-		Example: fmt.Sprintf(`%[1]s registry copy docker.io/labring/kubernetes:v1.25.0 sealos.hub:5000
-%[1]s registry copy -a docker.io/labring/kubernetes:v1.25.0 sealos.hub:5000`, examplePrefix),
+		Example: fmt.Sprintf(`%[1]s copy docker.io/labring/kubernetes:v1.25.0 sealos.hub:5000
+%[1]s copy -a docker.io/labring/kubernetes:v1.25.0 sealos.hub:5000`, examplePrefix),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCopy(cmd, args[0], args[1], opts)
 		},

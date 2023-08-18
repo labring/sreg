@@ -41,8 +41,8 @@ func NewRegistryImageSaveCmd(examplePrefix string) *cobra.Command {
 		Use:   "save",
 		Short: "save images to local registry dir",
 		Example: fmt.Sprintf(`
-%[1]s registry save --registry-dir=/tmp/registry .
-%[1]s registry save --registry-dir=/tmp/registry --images=docker.io/library/busybox:latest`, examplePrefix),
+%[1]s save --registry-dir=/tmp/registry .
+%[1]s save --registry-dir=/tmp/registry --images=docker.io/library/busybox:latest`, examplePrefix),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			is := save.NewImageSaver(context.Background(), flagsResults.registryPullMaxPullProcs, auth)
 			outImages, err := is.SaveImages(images, flagsResults.registryPullRegistryDir, v1.Platform{OS: "linux", Architecture: flagsResults.registryPullArch})
