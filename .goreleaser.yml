@@ -1,13 +1,5 @@
-before:
-  hooks:
-    # You may remove this if you don't use go modules.
-    - go mod download
-    # you may remove this if you don't need go generate
-    - go generate ./...
 builds:
   - id: gh-rebot
-    env:
-      - CGO_ENABLED=0
     goos:
       - linux
     goarch:
@@ -18,7 +10,8 @@ builds:
       - -X github.com/labring/sreg/pkg/version.gitVersion={{.Version}}
       - -X github.com/labring/sreg/pkg/version.gitCommit={{.ShortCommit}}
       - -X github.com/labring/sreg/pkg/version.buildDate={{.Date}}
-
+    tags:
+      - containers_image_openpgp
 
 checksum:
   name_template: 'checksums.txt'
