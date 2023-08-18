@@ -9,7 +9,7 @@ on:
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -20,7 +20,11 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.20.x
-
+      - name: Install Dependencies
+        run: |
+          sudo apt update && sudo apt install -y gcc-aarch64-linux-gnu \
+            libbtrfs-dev libgpgme-dev libdevmapper-dev \
+            qemu-user-static binfmt-support
       - name: Get previous tag
         id: previoustag
         run: |
