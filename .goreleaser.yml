@@ -1,6 +1,8 @@
 builds:
   - id: sreg
     goos:
+      - darwin
+      - windows
       - linux
     goarch:
       - amd64
