@@ -17,8 +17,10 @@ limitations under the License.
 package buildimage
 
 const (
-	ChartsDirName    = "charts"
-	ManifestsDirName = "manifests"
-	ImagesDirName    = "images"
-	ImageShimDirName = "shim"
+	ChartsDirName      = "charts"
+	ManifestsDirName   = "manifests"
+	ImagesDirName      = "images"
+	ImageShimDirName   = "shim"
+	ImageTarDirName    = "tar"
+	ImageTarConfigName = "config.txt"
 )

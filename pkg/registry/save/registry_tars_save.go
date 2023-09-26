@@ -17,6 +17,7 @@ package save
 import (
 	"context"
 	"fmt"
+	"github.com/containers/image/v5/transports/alltransports"
 	"strings"
 	stdsync "sync"
 	"time"
@@ -32,9 +33,22 @@ import (
 	"github.com/labring/sreg/pkg/utils/logger"
 )
 
-const localhost = "127.0.0.1"
+func NewImageTarSaver(ctx context.Context, maxPullProcs int) Registry {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return &tmpTarRegistryImage{
+		ctx:          ctx,
+		maxPullProcs: maxPullProcs,
+	}
+}
 
-func (is *tmpRegistryImage) SaveImages(images []string, dir string, platform v1.Platform) ([]string, error) {
+type tmpTarRegistryImage struct {
+	ctx          context.Context
+	maxPullProcs int
+}
+
+func (is *tmpTarRegistryImage) SaveImages(images []string, dir string, platform v1.Platform) ([]string, error) {
 	logger.Debug("trying to save images: %+v for platform: %s", images,
 		strings.Join([]string{platform.OS, platform.Architecture, platform.Variant}, ","))
 	config, err := handler.NewConfig(dir, 0)
@@ -73,11 +87,12 @@ func (is *tmpRegistryImage) SaveImages(images []string, dir string, platform v1.
 				<-numCh
 				mu.Unlock()
 			}()
-			srcRef, err := sync.ImageNameToReference(sys, img, is.auths)
+			allImage := strings.Split(img, "@")
+			srcRef, err := alltransports.ParseImageName(allImage[0])
 			if err != nil {
-				return err
+				return fmt.Errorf("invalid source name %s: %v", allImage[0], err)
 			}
-			err = sync.RegistryToImage(is.ctx, sys, srcRef, ep, copy.CopySystemImage)
+			err = sync.ArchiveToImage(is.ctx, sys, srcRef, fmt.Sprintf("%s/%s", ep, allImage[1]), copy.CopySystemImage)
 			if err != nil {
 				return fmt.Errorf("save image %s: %w", img, err)
 			}

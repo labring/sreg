@@ -105,7 +105,7 @@ func runCopy(cmd *cobra.Command, source, dst string, opts globalOptions) error {
 	if err != nil {
 		return err
 	}
-	if err := sync.ToImage(ctx, sys, srcRef, dep, imageListSelection); err != nil {
+	if err := sync.RegistryToImage(ctx, sys, srcRef, dep, imageListSelection); err != nil {
 		return err
 	}
 	fmt.Fprintln(out, "Copy image completed")
