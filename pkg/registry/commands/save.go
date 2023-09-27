@@ -50,18 +50,21 @@ func NewRegistryImageSaveCmd(examplePrefix string) *cobra.Command {
 				return err
 			}
 			logger.Info("images pulled: %+v", outImages)
-			tarIs := save.NewImageTarSaver(context.Background(), flagsResults.registryPullMaxPullProcs)
-			tars, err := buildimage.TarList(args[0])
-			if err != nil {
-				return err
-			}
-			if len(tars) != 0 {
-				outTars, err := tarIs.SaveImages(tars, flagsResults.registryPullRegistryDir, v1.Platform{OS: "linux", Architecture: flagsResults.registryPullArch})
+			if args[0] != "" {
+				tarIs := save.NewImageTarSaver(context.Background(), flagsResults.registryPullMaxPullProcs)
+				tars, err := buildimage.TarList(args[0])
 				if err != nil {
 					return err
 				}
-				logger.Info("images tar saved: %+v", outTars)
+				if len(tars) != 0 {
+					outTars, err := tarIs.SaveImages(tars, flagsResults.registryPullRegistryDir, v1.Platform{OS: "linux", Architecture: flagsResults.registryPullArch})
+					if err != nil {
+						return err
+					}
+					logger.Info("images tar saved: %+v", outTars)
+				}
 			}
+
 			return nil
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
