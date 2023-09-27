@@ -52,7 +52,7 @@ func TestSaveTarImages(t *testing.T) {
 	save := NewImageTarSaver(context.TODO(), 5)
 	t.Run("no credentials found", func(t *testing.T) {
 		_ = os.Mkdir("testdata/registry", 0755)
-		imgs, err := save.SaveImages([]string{"docker-archive:testregistrytar/images/tar/config_main.tar@library/config_main"}, "testdata/registry", v1.Platform{
+		imgs, err := save.SaveImages([]string{"docker-archive:testregistrytar/images/skopeo/config_main.tar@library/config_main"}, "testdata/registry", v1.Platform{
 			Architecture: "amd64",
 			OS:           "linux",
 		})
