@@ -17,6 +17,7 @@ package save
 import (
 	"context"
 	"fmt"
+	"github.com/containers/image/v5/transports/alltransports"
 	"strings"
 	stdsync "sync"
 	"time"
@@ -73,10 +74,19 @@ func (is *tmpRegistryImage) SaveImages(images []string, dir string, platform v1.
 				<-numCh
 				mu.Unlock()
 			}()
-			srcRef, err := sync.ImageNameToReference(sys, img, is.auths)
-			if err != nil {
-				return err
+			var srcRef itype.ImageReference
+			if strings.HasPrefix(img, "containers-storage") || strings.HasPrefix(img, "docker-daemon") {
+				srcRef, err = alltransports.ParseImageName(img)
+				if err != nil {
+					return err
+				}
+			} else {
+				srcRef, err = sync.ImageNameToReference(sys, img, is.auths)
+				if err != nil {
+					return err
+				}
 			}
+
 			err = sync.RegistryToImage(is.ctx, sys, srcRef, ep, copy.CopySystemImage)
 			if err != nil {
 				return fmt.Errorf("save image %s: %w", img, err)
