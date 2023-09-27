@@ -14,6 +14,7 @@ builds:
       - -X github.com/labring/sreg/pkg/version.buildDate={{.Date}}
     tags:
       - containers_image_openpgp
+      - exclude_graphdriver_devicemapper
 
 checksum:
   name_template: 'checksums.txt'

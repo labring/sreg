@@ -76,9 +76,10 @@ func (is *tmpRegistryImage) SaveImages(images []string, dir string, platform v1.
 			}()
 			var srcRef itype.ImageReference
 			if strings.HasPrefix(img, "containers-storage") || strings.HasPrefix(img, "docker-daemon") {
+				logger.Info("Using containers-storage or docker-daemon as image transport")
 				srcRef, err = alltransports.ParseImageName(img)
 				if err != nil {
-					return err
+					return fmt.Errorf("invalid source name %s: %v", img, err)
 				}
 			} else {
 				srcRef, err = sync.ImageNameToReference(sys, img, is.auths)
@@ -86,7 +87,6 @@ func (is *tmpRegistryImage) SaveImages(images []string, dir string, platform v1.
 					return err
 				}
 			}
-
 			err = sync.RegistryToImage(is.ctx, sys, srcRef, ep, copy.CopySystemImage)
 			if err != nil {
 				return fmt.Errorf("save image %s: %w", img, err)
