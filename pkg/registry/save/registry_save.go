@@ -17,7 +17,6 @@ package save
 import (
 	"context"
 	"fmt"
-	"github.com/containers/image/v5/transports/alltransports"
 	"strings"
 	stdsync "sync"
 	"time"
@@ -75,17 +74,9 @@ func (is *tmpRegistryImage) SaveImages(images []string, dir string, platform v1.
 				mu.Unlock()
 			}()
 			var srcRef itype.ImageReference
-			if strings.HasPrefix(img, "docker-daemon") {
-				logger.Info("Using containers-storage or docker-daemon as image transport")
-				srcRef, err = alltransports.ParseImageName(img)
-				if err != nil {
-					return fmt.Errorf("invalid source name %s: %v", img, err)
-				}
-			} else {
-				srcRef, err = sync.ImageNameToReference(sys, img, is.auths)
-				if err != nil {
-					return err
-				}
+			srcRef, err = sync.ImageNameToReference(sys, img, is.auths)
+			if err != nil {
+				return err
 			}
 			err = sync.RegistryToImage(is.ctx, sys, srcRef, ep, copy.CopySystemImage)
 			if err != nil {

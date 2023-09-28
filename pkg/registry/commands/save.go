@@ -33,7 +33,7 @@ import (
 
 func NewRegistryImageSaveCmd(examplePrefix string) *cobra.Command {
 	var auth map[string]types.AuthConfig
-	var images []string
+	var images, tars []string
 	flagsResults := registrySaveRawResults{
 		registrySaveResults: new(registrySaveResults),
 	}
@@ -42,43 +42,53 @@ func NewRegistryImageSaveCmd(examplePrefix string) *cobra.Command {
 		Short: "save images to local registry dir",
 		Example: fmt.Sprintf(`
 %[1]s save --registry-dir=/tmp/registry .
+%[1]s save --registry-dir=/tmp/registry --images=containers-storage:docker.io/labring/coredns:v0.0.1
+%[1]s save --registry-dir=/tmp/registry --images=docker-daemon:docker.io/library/nginx:latest
+%[1]s save --registry-dir=/tmp/registry --tars=docker-archive:/root/config_main.tar@library/config_main
+%[1]s save --registry-dir=/tmp/registry --tars=oci-archive:/root/config_main.tar@library/config_main
 %[1]s save --registry-dir=/tmp/registry --images=docker.io/library/busybox:latest`, examplePrefix),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			is := save.NewImageSaver(context.Background(), flagsResults.registryPullMaxPullProcs, auth)
-			outImages, err := is.SaveImages(images, flagsResults.registryPullRegistryDir, v1.Platform{OS: "linux", Architecture: flagsResults.registryPullArch})
-			if err != nil {
-				return err
-			}
-			logger.Info("images pulled: %+v", outImages)
-			if args[0] != "" {
-				tarIs := save.NewImageTarSaver(context.Background(), flagsResults.registryPullMaxPullProcs)
-				tars, err := buildimage.TarList(args[0])
+			if len(images) > 0 {
+				is := save.NewImageSaver(context.Background(), flagsResults.registryPullMaxPullProcs, auth)
+				outImages, err := is.SaveImages(images, flagsResults.registryPullRegistryDir, v1.Platform{OS: "linux", Architecture: flagsResults.registryPullArch})
 				if err != nil {
 					return err
 				}
-				if len(tars) != 0 {
-					outTars, err := tarIs.SaveImages(tars, flagsResults.registryPullRegistryDir, v1.Platform{OS: "linux", Architecture: flagsResults.registryPullArch})
-					if err != nil {
-						return err
-					}
-					logger.Info("images tar saved: %+v", outTars)
-				}
+				logger.Info("images pulled: %+v", outImages)
 			}
 
+			if len(tars) > 0 {
+				tarIs := save.NewImageTarSaver(context.Background(), flagsResults.registryPullMaxPullProcs)
+				outTars, err := tarIs.SaveImages(tars, flagsResults.registryPullRegistryDir, v1.Platform{OS: "linux", Architecture: flagsResults.registryPullArch})
+				if err != nil {
+					return err
+				}
+				logger.Info("images tar saved: %+v", outTars)
+			}
 			return nil
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 && len(flagsResults.images) == 0 {
-				return errors.New("'--images' and args cannot be empty at the same time")
+			if len(args) == 0 && len(flagsResults.images) == 0 && len(flagsResults.tars) == 0 {
+				return errors.New("'--images' '--tars' and args cannot be empty at the same time")
 			}
 			var err error
-			if len(flagsResults.images) > 0 {
-				images = flagsResults.images
+			if len(args) == 0 {
+				if len(flagsResults.images) > 0 {
+					images = flagsResults.images
+				}
+				if len(flagsResults.tars) > 0 {
+					tars = flagsResults.tars
+				}
 			} else {
 				images, err = buildimage.List(args[0])
-			}
-			if err != nil {
-				return err
+				if err != nil {
+					return err
+				}
+				tars, err = buildimage.TarList(args[0])
+				if err != nil {
+					return err
+				}
+
 			}
 			auth, err = flagsResults.CheckAuth()
 			if err != nil {

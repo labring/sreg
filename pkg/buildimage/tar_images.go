@@ -37,6 +37,9 @@ func TarList(dir string) ([]string, error) {
 		return nil, wrapGetImageErr(err, tarDir)
 	}
 	for i, image := range images {
+		if image == "" {
+			continue
+		}
 		parts := strings.SplitN(image, "@", 2)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid image format: %s", image)

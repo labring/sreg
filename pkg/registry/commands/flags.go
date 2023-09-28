@@ -55,9 +55,12 @@ func (opts *registrySaveResults) CheckAuth() (map[string]types.AuthConfig, error
 type registrySaveRawResults struct {
 	*registrySaveResults
 	images []string
+	tars   []string
 }
 
 func (opts *registrySaveRawResults) RegisterFlags(fs *pflag.FlagSet) {
 	opts.registrySaveResults.RegisterFlags(fs)
 	fs.StringSliceVar(&opts.images, "images", []string{}, "images list")
+	fs.StringSliceVar(&opts.tars, "tars", []string{}, "tar list, eg: --tars=docker-archive:/root/config_main.tar@library/config_main")
+
 }

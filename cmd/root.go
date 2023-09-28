@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/labring/sreg/pkg/registry/commands"
 	"github.com/labring/sreg/pkg/utils/logger"
+	"github.com/sirupsen/logrus"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -50,6 +51,9 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(func() {
 		logger.CfgConsoleLogger(debug, false)
+		if debug {
+			logrus.SetLevel(logrus.DebugLevel)
+		}
 	})
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug logger")
 

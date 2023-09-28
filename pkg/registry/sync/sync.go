@@ -64,6 +64,12 @@ func ToRegistry(ctx context.Context, opts *Options) error {
 	if err != nil {
 		return err
 	}
+	var allError error
+	defer func() {
+		if err := policyContext.Destroy(); err != nil {
+			allError = fmt.Errorf("error tearing down policy context: %v", err)
+		}
+	}()
 	repos, err := docker.SearchRegistry(ctx, sys, src, "", 1<<10)
 	if err != nil {
 		return err
@@ -115,7 +121,7 @@ func ToRegistry(ctx context.Context, opts *Options) error {
 			}
 		}
 	}
-	return nil
+	return allError
 }
 
 func getRetryOptions() *retry.RetryOptions {
@@ -131,6 +137,27 @@ func getRetryOptions() *retry.RetryOptions {
 }
 
 func ImageNameToReference(sys *types.SystemContext, img string, auth map[string]dtype.AuthConfig) (types.ImageReference, error) {
+	if err := reexecIfNecessaryForImages(img); err != nil {
+		return nil, err
+	}
+	transport := alltransports.TransportFromImageName(img)
+	if transport != nil && transport.Name() == "containers-storage" {
+		logger.Info("Using containers-storage as image transport")
+		srcRef, err := alltransports.ParseImageName(img)
+		if err != nil {
+			return nil, fmt.Errorf("invalid source name %s: %v", img, err)
+		}
+		return srcRef, nil
+	}
+	if transport != nil && transport.Name() == "docker-daemon" {
+		logger.Info("Using docker-daemon as image transport")
+		srcRef, err := alltransports.ParseImageName(img)
+		if err != nil {
+			return nil, fmt.Errorf("invalid source name %s: %v", img, err)
+		}
+		return srcRef, nil
+	}
+
 	src, err := name.ParseReference(img)
 	if err != nil {
 		return nil, fmt.Errorf("ref invalid source name %s: %v", img, err)
@@ -174,7 +201,13 @@ func RegistryToImage(ctx context.Context, sys *types.SystemContext, src types.Im
 	if err != nil {
 		return err
 	}
-	return retry.RetryIfNecessary(ctx, func() error {
+	var allError error
+	defer func() {
+		if err := policyContext.Destroy(); err != nil {
+			allError = fmt.Errorf("error tearing down policy context: %v", err)
+		}
+	}()
+	if err = retry.RetryIfNecessary(ctx, func() error {
 		_, err = copy.Image(ctx, policyContext, destRef, src, &copy.Options{
 			SourceCtx:          sys,
 			DestinationCtx:     sys,
@@ -182,7 +215,10 @@ func RegistryToImage(ctx context.Context, sys *types.SystemContext, src types.Im
 			ReportWriter:       os.Stdout,
 		})
 		return err
-	}, getRetryOptions())
+	}, getRetryOptions()); err != nil {
+		return err
+	}
+	return allError
 }
 
 func ArchiveToImage(ctx context.Context, sys *types.SystemContext, src types.ImageReference, dst string, selection copy.ImageListSelection) error {
@@ -195,7 +231,13 @@ func ArchiveToImage(ctx context.Context, sys *types.SystemContext, src types.Ima
 	if err != nil {
 		return err
 	}
-	return retry.RetryIfNecessary(ctx, func() error {
+	var allError error
+	defer func() {
+		if err = policyContext.Destroy(); err != nil {
+			allError = fmt.Errorf("error tearing down policy context: %v", err)
+		}
+	}()
+	if err = retry.RetryIfNecessary(ctx, func() error {
 		_, err = copy.Image(ctx, policyContext, destRef, src, &copy.Options{
 			SourceCtx:          sys,
 			DestinationCtx:     sys,
@@ -203,7 +245,10 @@ func ArchiveToImage(ctx context.Context, sys *types.SystemContext, src types.Ima
 			ReportWriter:       os.Stdout,
 		})
 		return err
-	}, getRetryOptions())
+	}, getRetryOptions()); err != nil {
+		return err
+	}
+	return allError
 }
 
 func getPolicyContext() (*signature.PolicyContext, error) {
