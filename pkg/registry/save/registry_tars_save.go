@@ -87,6 +87,9 @@ func (is *tmpTarRegistryImage) SaveImages(images []string, dir string, platform 
 				<-numCh
 				mu.Unlock()
 			}()
+			if strings.TrimSpace(img) == "" {
+				return nil
+			}
 			allImage := strings.Split(img, "@")
 			srcRef, err := alltransports.ParseImageName(allImage[0])
 			if err != nil {

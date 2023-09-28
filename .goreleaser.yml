@@ -7,6 +7,8 @@ builds:
     goarch:
       - amd64
       - arm64
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
       - -X github.com/labring/sreg/pkg/version.gitVersion={{.Version}}
@@ -14,8 +16,27 @@ builds:
       - -X github.com/labring/sreg/pkg/version.buildDate={{.Date}}
     tags:
       - containers_image_openpgp
+      - netgo
       - exclude_graphdriver_devicemapper
-
+      - static
+      - osusergo
+      - exclude_graphdriver_btrfs
+    overrides:
+      - goos: linux
+        goarch: amd64
+        goamd64: v1
+        goarm: ""
+        gomips: ""
+        env:
+          - CGO_ENABLED=1
+          - CC=x86_64-linux-gnu-gcc
+      - goos: linux
+        goarch: arm64
+        goarm: ""
+        gomips: ""
+        env:
+          - CGO_ENABLED=1
+          - CC=aarch64-linux-gnu-gcc
 checksum:
   name_template: 'checksums.txt'
 snapshot:
