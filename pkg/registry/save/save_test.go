@@ -44,3 +44,22 @@ func TestSaveTmpImages(t *testing.T) {
 		t.Logf("images: %+v", imgs)
 	})
 }
+
+func TestSaveTarImages(t *testing.T) {
+	defer func() {
+		_ = os.RemoveAll("testdata/registry")
+	}()
+	save := NewImageTarSaver(context.TODO(), 5)
+	t.Run("no credentials found", func(t *testing.T) {
+		_ = os.Mkdir("testdata/registry", 0755)
+		imgs, err := save.SaveImages([]string{"docker-archive:testregistrytar/images/skopeo/config_main.tar@library/config_main"}, "testdata/registry", v1.Platform{
+			Architecture: "amd64",
+			OS:           "linux",
+		})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		t.Logf("images: %+v", imgs)
+	})
+}

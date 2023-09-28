@@ -1,5 +1,5 @@
 /*
-Copyright 2022 cuisongliu@qq.com.
+Copyright 2023 cuisongliu@qq.com.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,11 +16,14 @@ limitations under the License.
 
 package buildimage
 
-const (
-	ChartsDirName      = "charts"
-	ManifestsDirName   = "manifests"
-	ImagesDirName      = "images"
-	ImageShimDirName   = "shim"
-	ImageSkopeoDirName = "skopeo"
-	ImageTarConfigName = "tar.txt"
+import (
+	"testing"
 )
+
+func TestTarList(t *testing.T) {
+	data, err := TarList("test/testregistrytar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(data)
+}

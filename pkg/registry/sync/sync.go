@@ -152,7 +152,7 @@ func ImageNameToReference(sys *types.SystemContext, img string, auth map[string]
 	return srcRef, nil
 }
 
-func ToImage(ctx context.Context, sys *types.SystemContext, src types.ImageReference, dst string, selection copy.ImageListSelection) error {
+func RegistryToImage(ctx context.Context, sys *types.SystemContext, src types.ImageReference, dst string, selection copy.ImageListSelection) error {
 	allSrcImage := src.DockerReference().String()
 	var repo string
 	parts := strings.SplitN(allSrcImage, "/", 2)
@@ -167,6 +167,27 @@ func ToImage(ctx context.Context, sys *types.SystemContext, src types.ImageRefer
 	//named.
 	dstImage := strings.Join([]string{dst, repo}, "/")
 	destRef, err := alltransports.ParseImageName(fmt.Sprintf("docker://%s", dstImage))
+	if err != nil {
+		return fmt.Errorf("invalid destination name %s: %v", dst, err)
+	}
+	policyContext, err := getPolicyContext()
+	if err != nil {
+		return err
+	}
+	return retry.RetryIfNecessary(ctx, func() error {
+		_, err = copy.Image(ctx, policyContext, destRef, src, &copy.Options{
+			SourceCtx:          sys,
+			DestinationCtx:     sys,
+			ImageListSelection: selection,
+			ReportWriter:       os.Stdout,
+		})
+		return err
+	}, getRetryOptions())
+}
+
+func ArchiveToImage(ctx context.Context, sys *types.SystemContext, src types.ImageReference, dst string, selection copy.ImageListSelection) error {
+	logger.Debug("syncing image from %s to %s", src.Transport().Name(), dst)
+	destRef, err := alltransports.ParseImageName(fmt.Sprintf("docker://%s", dst))
 	if err != nil {
 		return fmt.Errorf("invalid destination name %s: %v", dst, err)
 	}
