@@ -75,7 +75,7 @@ func (is *tmpRegistryImage) SaveImages(images []string, dir string, platform v1.
 				mu.Unlock()
 			}()
 			var srcRef itype.ImageReference
-			if strings.HasPrefix(img, "containers-storage") || strings.HasPrefix(img, "docker-daemon") {
+			if strings.HasPrefix(img, "docker-daemon") {
 				logger.Info("Using containers-storage or docker-daemon as image transport")
 				srcRef, err = alltransports.ParseImageName(img)
 				if err != nil {
