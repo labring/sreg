@@ -120,3 +120,18 @@ func List(dir string) ([]string, error) {
 	list = list.Insert(shimImgs...)
 	return list.List(), nil
 }
+
+func Filter(images []string, ignoreFile string) ([]string, error) {
+	ignore, err := file.ReadLines(ignoreFile)
+	if err != nil {
+		return nil, err
+	}
+	ignoreSet := sets.NewString(ignore...)
+	var res []string
+	for _, img := range images {
+		if !ignoreSet.Has(img) {
+			res = append(res, img)
+		}
+	}
+	return res, nil
+}

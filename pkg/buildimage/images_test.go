@@ -15,6 +15,7 @@
 package buildimage
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -25,4 +26,39 @@ func TestParseYamlImages(t *testing.T) {
 		return
 	}
 	t.Logf("%v", data)
+}
+
+func TestFilter(t *testing.T) {
+	type args struct {
+		images     []string
+		ignoreFile string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "filter",
+			args: args{
+				images:     []string{"docker.io/cilium/istio_proxy", "quay.io/cilium/cilium:v1.12.0", "quay.io/cilium/operator-generic:v1.12.0"},
+				ignoreFile: "test/ignore/.sealignore",
+			},
+			want:    []string{"docker.io/cilium/istio_proxy", "quay.io/cilium/cilium:v1.12.0"},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Filter(tt.args.images, tt.args.ignoreFile)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Filter() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Filter() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

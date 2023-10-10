@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/labring/sreg/pkg/utils/file"
+	"path"
 
 	"github.com/labring/sreg/pkg/registry/save"
 
@@ -83,6 +85,13 @@ func NewRegistryImageSaveCmd(examplePrefix string) *cobra.Command {
 				images, err = buildimage.List(args[0])
 				if err != nil {
 					return err
+				}
+				ignore := path.Join(path.Dir(args[0]), ".sealignore")
+				if file.IsExist(ignore) {
+					images, err = buildimage.Filter(images, ignore)
+					if err != nil {
+						return err
+					}
 				}
 				tars, err = buildimage.TarList(args[0])
 				if err != nil {
