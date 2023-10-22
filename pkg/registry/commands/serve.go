@@ -18,6 +18,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"github.com/labring/sreg/pkg/utils/file"
 	"net"
 	"net/http"
 	"os"
@@ -36,6 +37,7 @@ func newRegistryServeFilesystemCommand() *cobra.Command {
 		port           int
 		disableLogging bool
 		logLevel       string
+		pidFile        string
 	)
 	cmd := &cobra.Command{
 		Use:     "filesystem",
@@ -50,6 +52,12 @@ func newRegistryServeFilesystemCommand() *cobra.Command {
 			if !disableLogging {
 				logger.Info("serving on %s", config.HTTP.Addr)
 			}
+			if pidFile != "" {
+				err = file.WriteFile(pidFile, []byte(fmt.Sprintf("%d", os.Getpid())))
+				if err != nil {
+					return fmt.Errorf("failed to write pid file: %w", err)
+				}
+			}
 			config.Log.Level = configuration.Loglevel(logLevel)
 			config.Log.AccessLog.Disabled = disableLogging
 			errCh := handler.Run(cmd.Context(), config)
@@ -59,6 +67,7 @@ func newRegistryServeFilesystemCommand() *cobra.Command {
 	cmd.Flags().IntVarP(&port, "port", "p", 0, "listening port, default is random unused port")
 	cmd.Flags().BoolVar(&disableLogging, "disable-logging", false, "disable logging output")
 	cmd.Flags().StringVar(&logLevel, "log-level", "error", "configure logging level")
+	cmd.Flags().StringVar(&pidFile, "pid-file", "", "write the process ID to a file")
 	return cmd
 }
 
