@@ -19,6 +19,7 @@ package http
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"github.com/labring/sreg/pkg/utils/logger"
 	"io"
 	"net"
@@ -39,6 +40,7 @@ func WaitUntilEndpointAlive(ctx context.Context, endpoint string) error {
 	if !strings.HasPrefix(endpoint, "http") {
 		endpoint = "http://" + endpoint
 	}
+	endpoint = endpoint + "/v2/"
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return err
@@ -52,6 +54,9 @@ func WaitUntilEndpointAlive(ctx context.Context, endpoint string) error {
 			var resp *http.Response
 			resp, err = DefaultClient.Get(u.String())
 			if err == nil {
+				if resp.StatusCode != http.StatusOK {
+					return errors.New("registry http status code not 200")
+				}
 				_, _ = io.Copy(io.Discard, resp.Body)
 				resp.Body.Close()
 				logger.Debug("http endpoint %s is alive", u.String())
