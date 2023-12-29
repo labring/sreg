@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/labring/sreg/pkg/utils/logger"
 	"io"
 	"net"
 	"net/http"
@@ -94,6 +95,7 @@ func configureLogging(ctx context.Context, config *configuration.Configuration) 
 
 func New(ctx context.Context, config *configuration.Configuration) (*http.Server, error) {
 	ctx = configureLogging(ctx, config)
+	logger.Debug("registry config: %+v", config)
 	return &http.Server{
 		Handler: handlers.NewApp(ctx, config),
 	}, nil
