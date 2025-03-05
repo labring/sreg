@@ -30,8 +30,8 @@ jobs:
         with:
           go-version: 1.23.x
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v4
+        uses: goreleaser/goreleaser-action@v1
         with:
-          args: release  --timeout=1h --debug
+          args: release  --timeout=1h
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RELEASE_PAT }}
