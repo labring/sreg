@@ -16,10 +16,9 @@ package save
 
 import (
 	"context"
+	"github.com/docker/docker/api/types/registry"
 
 	"github.com/google/go-containerregistry/pkg/name"
-
-	"github.com/docker/docker/api/types"
 
 	"github.com/docker/docker/pkg/progress"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -36,25 +35,25 @@ type defaultImage struct {
 	domainToImages map[string][]name.Reference
 	progressOut    progress.Output
 	maxPullProcs   int
-	auths          map[string]types.AuthConfig
+	auths          map[string]registry.AuthConfig
 }
 
 type tmpRegistryImage struct {
 	ctx          context.Context
 	maxPullProcs int
-	auths        map[string]types.AuthConfig
+	auths        map[string]registry.AuthConfig
 }
 
-func NewImageSaver(ctx context.Context, maxPullProcs int, auths map[string]types.AuthConfig) Registry {
+func NewImageSaver(ctx context.Context, maxPullProcs int, auths map[string]registry.AuthConfig) Registry {
 	return newTmpRegistrySaver(ctx, maxPullProcs, auths)
 }
 
-func newTmpRegistrySaver(ctx context.Context, maxPullProcs int, auths map[string]types.AuthConfig) Registry {
+func newTmpRegistrySaver(ctx context.Context, maxPullProcs int, auths map[string]registry.AuthConfig) Registry {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if auths == nil {
-		auths = make(map[string]types.AuthConfig)
+		auths = make(map[string]registry.AuthConfig)
 	}
 	return &tmpRegistryImage{
 		ctx:          ctx,

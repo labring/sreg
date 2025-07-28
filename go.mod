@@ -56,6 +56,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/errors v0.20.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
@@ -135,6 +136,10 @@ require (
 	go.mongodb.org/mongo-driver v1.11.3 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0 // indirect
+	go.opentelemetry.io/otel v1.19.0 // indirect
+	go.opentelemetry.io/otel/metric v1.19.0 // indirect
+	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
@@ -168,6 +173,6 @@ require (
 replace (
 	github.com/containers/common => github.com/containers/common v0.53.1-0.20230613173441-e1ea4d9a74e5
 	github.com/containers/storage => github.com/containers/storage v1.46.1
-	github.com/docker/docker => github.com/docker/docker v23.0.6+incompatible
+	github.com/docker/docker => github.com/docker/docker v25.0.1+incompatible
 	github.com/imdario/mergo => github.com/imdario/mergo v0.3.13
 )

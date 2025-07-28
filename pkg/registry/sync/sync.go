@@ -36,7 +36,7 @@ import (
 	"github.com/containers/image/v5/signature"
 	"github.com/containers/image/v5/transports/alltransports"
 	"github.com/containers/image/v5/types"
-	dtype "github.com/docker/docker/api/types"
+	dtype "github.com/docker/docker/api/types/registry"
 
 	"github.com/labring/sreg/pkg/utils/logger"
 )

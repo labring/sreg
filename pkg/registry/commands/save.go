@@ -20,12 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/labring/sreg/pkg/utils/file"
 	"path"
 
 	"github.com/labring/sreg/pkg/registry/save"
 
-	"github.com/docker/docker/api/types"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 
@@ -34,7 +34,7 @@ import (
 )
 
 func NewRegistryImageSaveCmd(examplePrefix string) *cobra.Command {
-	var auth map[string]types.AuthConfig
+	var auth map[string]registry.AuthConfig
 	var images, tars []string
 	flagsResults := registrySaveRawResults{
 		registrySaveResults: new(registrySaveResults),

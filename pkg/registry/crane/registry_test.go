@@ -17,19 +17,18 @@ limitations under the License.
 package crane
 
 import (
+	"github.com/docker/docker/api/types/registry"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/docker/docker/api/types"
 )
 
 func TestNewRegistry(t *testing.T) {
 	t.Setenv("DOCKER_CONFIG", filepath.Join("testdata"))
 	type args struct {
 		domain     string
-		authConfig types.AuthConfig
+		authConfig registry.AuthConfig
 	}
 	tests := []struct {
 		name    string
@@ -40,7 +39,7 @@ func TestNewRegistry(t *testing.T) {
 			name: "sealos.hub",
 			args: args{
 				domain: "sealos.hub:5000",
-				authConfig: types.AuthConfig{
+				authConfig: registry.AuthConfig{
 					Username: "admin",
 					Password: "passw0rd",
 				},
@@ -51,7 +50,7 @@ func TestNewRegistry(t *testing.T) {
 			name: "sealos.hub",
 			args: args{
 				domain: "http://sealos.hub:5000",
-				authConfig: types.AuthConfig{
+				authConfig: registry.AuthConfig{
 					Username: "admin",
 					Password: "passw0rd",
 				},
@@ -62,7 +61,7 @@ func TestNewRegistry(t *testing.T) {
 			name: "sealos.hub",
 			args: args{
 				domain: "sealos.hub",
-				authConfig: types.AuthConfig{
+				authConfig: registry.AuthConfig{
 					Username: "admin",
 					Password: "passw0rd",
 				},

@@ -22,17 +22,17 @@ import (
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/google/go-containerregistry/pkg/crane"
 
 	"github.com/labring/sreg/pkg/utils/http"
 )
 
-func GetCraneOptions(authConfig map[string]types.AuthConfig) []crane.Option {
+func GetCraneOptions(authConfig map[string]registry.AuthConfig) []crane.Option {
 	return []crane.Option{crane.WithAuthFromKeychain(NewDefaultKeychain(authConfig)), crane.WithTransport(http.DefaultSkipVerify)}
 }
 
-func GetImageManifestFromAuth(image string, authConfig map[string]types.AuthConfig) (newImage string, data []byte, cfg *types.AuthConfig, err error) {
+func GetImageManifestFromAuth(image string, authConfig map[string]registry.AuthConfig) (newImage string, data []byte, cfg *registry.AuthConfig, err error) {
 	newImage = image
 	if authConfig == nil {
 		authConfig, err = GetAuthInfo(nil)
