@@ -17,17 +17,16 @@ limitations under the License.
 package crane
 
 import (
+	"github.com/docker/docker/api/types/registry"
 	"path/filepath"
 	"testing"
-
-	"github.com/docker/docker/api/types"
 )
 
 func TestGetImageDigestFromAuth(t *testing.T) {
 	t.Setenv("DOCKER_CONFIG", filepath.Join("testdata"))
 	type args struct {
 		image      string
-		authConfig map[string]types.AuthConfig
+		authConfig map[string]registry.AuthConfig
 	}
 	tests := []struct {
 		name    string
@@ -62,7 +61,7 @@ func TestGetImageDigestFromAuth(t *testing.T) {
 			name: "",
 			args: args{
 				image: "registry.k8s.io/etcd:3.5.1-0",
-				authConfig: map[string]types.AuthConfig{"sealos.hub:5000": {
+				authConfig: map[string]registry.AuthConfig{"sealos.hub:5000": {
 					Username:      "admin",
 					Password:      "passw0rd",
 					ServerAddress: "http://sealos.hub:5000",
@@ -74,7 +73,7 @@ func TestGetImageDigestFromAuth(t *testing.T) {
 			name: "",
 			args: args{
 				image: "registry.k8s.io/etcd:3.5.1-1",
-				authConfig: map[string]types.AuthConfig{"sealos.hub:5000": {
+				authConfig: map[string]registry.AuthConfig{"sealos.hub:5000": {
 					Username:      "admin",
 					Password:      "passw0rd",
 					ServerAddress: "http://sealos.hub:5000",
@@ -86,7 +85,7 @@ func TestGetImageDigestFromAuth(t *testing.T) {
 			name: "",
 			args: args{
 				image: "registry.k8s.io/etcd@sha256:64b9ea357325d5db9f8a723dcf503b5a449177b17ac87d69481e126bb724c263",
-				authConfig: map[string]types.AuthConfig{"sealos.hub:5000": {
+				authConfig: map[string]registry.AuthConfig{"sealos.hub:5000": {
 					Username:      "admin",
 					Password:      "passw0rd",
 					ServerAddress: "http://sealos.hub:5000",

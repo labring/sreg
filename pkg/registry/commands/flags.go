@@ -18,11 +18,11 @@ package commands
 
 import (
 	"fmt"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/labring/sreg/pkg/registry/crane"
 	"os"
 	"runtime"
 
-	"github.com/docker/docker/api/types"
 	"github.com/spf13/pflag"
 
 	"github.com/labring/sreg/pkg/utils/file"
@@ -41,7 +41,7 @@ func (opts *registrySaveResults) RegisterFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&opts.registryPullMaxPullProcs, "max-pull-procs", 5, "maximum number of goroutines for pulling")
 }
 
-func (opts *registrySaveResults) CheckAuth() (map[string]types.AuthConfig, error) {
+func (opts *registrySaveResults) CheckAuth() (map[string]registry.AuthConfig, error) {
 	if !file.IsExist(opts.registryPullRegistryDir) {
 		_ = os.MkdirAll(opts.registryPullRegistryDir, 0755)
 	}

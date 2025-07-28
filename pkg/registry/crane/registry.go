@@ -19,10 +19,9 @@ package crane
 import (
 	"context"
 	"fmt"
-
 	"github.com/containers/image/v5/pkg/docker/config"
 	types2 "github.com/containers/image/v5/types"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 
@@ -31,11 +30,11 @@ import (
 	"github.com/labring/sreg/pkg/utils/http"
 )
 
-func NewRegistry(domain string, authConfig types.AuthConfig) (name.Registry, error) {
+func NewRegistry(domain string, authConfig registry.AuthConfig) (name.Registry, error) {
 	domain = GetRegistryDomain(domain)
 	domain = NormalizeRegistry(domain)
 	ping := func(v name.Registry) error {
-		au, _ := NewDefaultKeychain(map[string]types.AuthConfig{domain: authConfig}).Resolve(v)
+		au, _ := NewDefaultKeychain(map[string]registry.AuthConfig{domain: authConfig}).Resolve(v)
 		_, err := transport.NewWithContext(context.Background(), v, au, http.DefaultSkipVerify, nil)
 		return err
 	}
@@ -63,26 +62,26 @@ func NewRegistry(domain string, authConfig types.AuthConfig) (name.Registry, err
 	return name.Registry{}, fmt.Errorf("not found registry: %+v", err)
 }
 
-func ToAuthConfig(cfg types2.DockerAuthConfig) types.AuthConfig {
-	return types.AuthConfig{
+func ToAuthConfig(cfg types2.DockerAuthConfig) registry.AuthConfig {
+	return registry.AuthConfig{
 		Username:      cfg.Username,
 		Password:      cfg.Password,
 		IdentityToken: cfg.IdentityToken,
 	}
 }
 
-func GetAuthInfo(sys *types2.SystemContext) (map[string]types.AuthConfig, error) {
+func GetAuthInfo(sys *types2.SystemContext) (map[string]registry.AuthConfig, error) {
 	creds, err := config.GetAllCredentials(sys)
 	if err != nil {
 		return nil, err
 	}
-	auths := make(map[string]types.AuthConfig, 0)
+	auths := make(map[string]registry.AuthConfig, 0)
 
 	for domain, cred := range creds {
 		logger.Debug("GetAuthInfo getCredentials domain: %s, username: %s", domain, cred.Username)
 		reg, err := NewRegistry(domain, ToAuthConfig(cred))
 		if err == nil {
-			auths[domain] = types.AuthConfig{
+			auths[domain] = registry.AuthConfig{
 				Username:      cred.Username,
 				Password:      cred.Password,
 				ServerAddress: fmt.Sprintf("%s://%s", reg.Scheme(), reg.RegistryStr()),

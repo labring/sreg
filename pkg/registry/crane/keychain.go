@@ -18,7 +18,7 @@ import (
 	"sync"
 
 	"github.com/docker/cli/cli/config/types"
-	dockertypes "github.com/docker/docker/api/types"
+	dockertypes "github.com/docker/docker/api/types/registry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 )
