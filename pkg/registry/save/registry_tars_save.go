@@ -33,19 +33,25 @@ import (
 	"github.com/labring/sreg/pkg/utils/logger"
 )
 
-func NewImageTarSaver(ctx context.Context, maxPullProcs int) Registry {
+func NewImageTarSaver(ctx context.Context, maxPullProcs int, all bool) Registry {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	imageListSelection := copy.CopySystemImage
+	if all {
+		imageListSelection = copy.CopyAllImages
+	}
 	return &tmpTarRegistryImage{
-		ctx:          ctx,
-		maxPullProcs: maxPullProcs,
+		ctx:                ctx,
+		maxPullProcs:       maxPullProcs,
+		imageListSelection: imageListSelection,
 	}
 }
 
 type tmpTarRegistryImage struct {
-	ctx          context.Context
-	maxPullProcs int
+	ctx                context.Context
+	maxPullProcs       int
+	imageListSelection copy.ImageListSelection
 }
 
 func (is *tmpTarRegistryImage) SaveImages(images []string, dir string, platform v1.Platform) ([]string, error) {
@@ -95,7 +101,7 @@ func (is *tmpTarRegistryImage) SaveImages(images []string, dir string, platform 
 			if err != nil {
 				return fmt.Errorf("invalid source name %s: %v", allImage[0], err)
 			}
-			err = sync.ArchiveToImage(is.ctx, sys, srcRef, fmt.Sprintf("%s/%s", ep, allImage[1]), copy.CopySystemImage)
+			err = sync.ArchiveToImage(is.ctx, sys, srcRef, fmt.Sprintf("%s/%s", ep, allImage[1]), is.imageListSelection)
 			if err != nil {
 				return fmt.Errorf("save image %s: %w", img, err)
 			}
