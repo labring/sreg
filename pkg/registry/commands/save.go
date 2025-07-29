@@ -51,7 +51,7 @@ func NewRegistryImageSaveCmd(examplePrefix string) *cobra.Command {
 %[1]s save --registry-dir=/tmp/registry --images=docker.io/library/busybox:latest`, examplePrefix),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(images) > 0 {
-				is := save.NewImageSaver(context.Background(), flagsResults.registryPullMaxPullProcs, auth)
+				is := save.NewImageSaver(context.Background(), flagsResults.registryPullMaxPullProcs, auth, flagsResults.all)
 				outImages, err := is.SaveImages(images, flagsResults.registryPullRegistryDir, v1.Platform{OS: "linux", Architecture: flagsResults.registryPullArch})
 				if err != nil {
 					return err
@@ -60,7 +60,7 @@ func NewRegistryImageSaveCmd(examplePrefix string) *cobra.Command {
 			}
 
 			if len(tars) > 0 {
-				tarIs := save.NewImageTarSaver(context.Background(), flagsResults.registryPullMaxPullProcs)
+				tarIs := save.NewImageTarSaver(context.Background(), flagsResults.registryPullMaxPullProcs, flagsResults.all)
 				outTars, err := tarIs.SaveImages(tars, flagsResults.registryPullRegistryDir, v1.Platform{OS: "linux", Architecture: flagsResults.registryPullArch})
 				if err != nil {
 					return err

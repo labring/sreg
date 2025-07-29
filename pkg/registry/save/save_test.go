@@ -30,7 +30,7 @@ func TestSaveTmpImages(t *testing.T) {
 	}()
 	t.Setenv("DOCKER_CONFIG", "/Users/cuisongliu/.docker")
 	authConfigs, _ := crane.GetAuthInfo(nil)
-	save := newTmpRegistrySaver(context.TODO(), 5, authConfigs)
+	save := NewImageSaver(context.TODO(), 5, authConfigs, false)
 	t.Run("no credentials found", func(t *testing.T) {
 		_ = os.Mkdir("testdata/registry", 0755)
 		imgs, err := save.SaveImages([]string{"nginx"}, "testdata/registry", v1.Platform{
@@ -49,9 +49,9 @@ func TestSaveTarImages(t *testing.T) {
 	defer func() {
 		_ = os.RemoveAll("testdata/registry")
 	}()
-	save := NewImageTarSaver(context.TODO(), 5)
+	save := NewImageTarSaver(context.TODO(), 5, false)
 	t.Run("no credentials found", func(t *testing.T) {
-		_ = os.Mkdir("testdata/registry", 0755)
+		_ = os.Mkdir("testdata/registry", 0o755)
 		imgs, err := save.SaveImages([]string{"docker-archive:testregistrytar/images/skopeo/config_main.tar@library/config_main"}, "testdata/registry", v1.Platform{
 			Architecture: "amd64",
 			OS:           "linux",

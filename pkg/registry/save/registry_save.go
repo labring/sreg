@@ -21,7 +21,6 @@ import (
 	stdsync "sync"
 	"time"
 
-	"github.com/containers/image/v5/copy"
 	itype "github.com/containers/image/v5/types"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
@@ -78,7 +77,7 @@ func (is *tmpRegistryImage) SaveImages(images []string, dir string, platform v1.
 			if err != nil {
 				return err
 			}
-			err = sync.RegistryToImage(is.ctx, sys, srcRef, ep, copy.CopySystemImage)
+			err = sync.RegistryToImage(is.ctx, sys, srcRef, ep, is.imageListSelection)
 			if err != nil {
 				return fmt.Errorf("save image %s: %w", img, err)
 			}
