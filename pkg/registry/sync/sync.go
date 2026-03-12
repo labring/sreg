@@ -38,6 +38,7 @@ import (
 	"github.com/containers/image/v5/types"
 	dtype "github.com/docker/docker/api/types/registry"
 
+	"github.com/labring/sreg/pkg/registry/crane"
 	"github.com/labring/sreg/pkg/utils/logger"
 )
 
@@ -52,6 +53,7 @@ type Options struct {
 	OmitError        bool
 	SystemContext    *types.SystemContext
 	ReportWriter     io.Writer
+	Auths            map[string]dtype.AuthConfig
 }
 
 func ToRegistry(ctx context.Context, opts *Options) error {
@@ -59,6 +61,8 @@ func ToRegistry(ctx context.Context, opts *Options) error {
 	dst := opts.Target
 	sys := opts.SystemContext
 	reportWriter := opts.ReportWriter
+	srcSys := systemContextWithAuth(sys, opts.Auths, src)
+	dstSys := systemContextWithAuth(sys, opts.Auths, dst)
 
 	policyContext, err := getPolicyContext()
 	if err != nil {
@@ -70,7 +74,7 @@ func ToRegistry(ctx context.Context, opts *Options) error {
 			allError = fmt.Errorf("error tearing down policy context: %v", err)
 		}
 	}()
-	repos, err := docker.SearchRegistry(ctx, sys, src, "", 1<<10)
+	repos, err := docker.SearchRegistry(ctx, srcSys, src, "", 1<<10)
 	if err != nil {
 		return err
 	}
@@ -87,7 +91,7 @@ func ToRegistry(ctx context.Context, opts *Options) error {
 			return err
 		}
 
-		refs, err := imagesToCopyFromRepo(ctx, sys, named)
+		refs, err := imagesToCopyFromRepo(ctx, srcSys, named)
 		if err != nil {
 			return err
 		}
@@ -103,8 +107,8 @@ func ToRegistry(ctx context.Context, opts *Options) error {
 				logger.Debug("syncing %s with selection %v", destRef.DockerReference().String(), selection)
 				if err = retry.RetryIfNecessary(ctx, func() error {
 					_, copyErr := copy.Image(ctx, policyContext, destRef, ref, &copy.Options{
-						SourceCtx:          sys,
-						DestinationCtx:     sys,
+						SourceCtx:          srcSys,
+						DestinationCtx:     dstSys,
 						ImageListSelection: selection,
 						ReportWriter:       reportWriter,
 					})
@@ -326,4 +330,56 @@ func ParseRegistryAddress(s string, args ...string) string {
 		portStr = portStr[idx+1:]
 	}
 	return net.JoinHostPort(s, portStr)
+}
+
+func systemContextWithAuth(base *types.SystemContext, auths map[string]dtype.AuthConfig, registry string) *types.SystemContext {
+	ctx := cloneSystemContext(base)
+	auth, ok := lookupRegistryAuth(auths, registry)
+	if !ok {
+		return ctx
+	}
+
+	ctx.DockerAuthConfig = &types.DockerAuthConfig{
+		Username:      auth.Username,
+		Password:      auth.Password,
+		IdentityToken: auth.IdentityToken,
+	}
+	return ctx
+}
+
+func cloneSystemContext(base *types.SystemContext) *types.SystemContext {
+	if base == nil {
+		return &types.SystemContext{}
+	}
+	cloned := *base
+	cloned.DockerAuthConfig = nil
+	return &cloned
+}
+
+func lookupRegistryAuth(auths map[string]dtype.AuthConfig, registry string) (dtype.AuthConfig, bool) {
+	if len(auths) == 0 {
+		return dtype.AuthConfig{}, false
+	}
+
+	candidates := []string{
+		registry,
+		strings.TrimPrefix(registry, "http://"),
+		strings.TrimPrefix(registry, "https://"),
+	}
+
+	normalized := crane.NormalizeRegistry(crane.GetRegistryDomain(registry))
+	candidates = append(candidates, normalized)
+	if normalized == "docker.io" {
+		candidates = append(candidates, "registry-1.docker.io", "index.docker.io")
+	}
+
+	for _, key := range candidates {
+		if key == "" {
+			continue
+		}
+		if auth, ok := auths[key]; ok {
+			return auth, true
+		}
+	}
+	return dtype.AuthConfig{}, false
 }

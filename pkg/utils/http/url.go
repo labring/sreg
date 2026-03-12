@@ -54,7 +54,7 @@ func WaitUntilEndpointAlive(ctx context.Context, endpoint string) error {
 			var resp *http.Response
 			resp, err = DefaultClient.Get(u.String())
 			if err == nil {
-				if resp.StatusCode != http.StatusOK {
+				if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusUnauthorized {
 					return errors.New("registry http status code not 200")
 				}
 				_, _ = io.Copy(io.Discard, resp.Body)
