@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/labring/sreg/pkg/registry/crane"
 	"github.com/labring/sreg/pkg/registry/sync"
 	httputils "github.com/labring/sreg/pkg/utils/http"
 )
@@ -59,6 +60,11 @@ func runSync(cmd *cobra.Command, source, dst string, opts globalOptions) error {
 	sep := sync.ParseRegistryAddress(source)
 	dep := sync.ParseRegistryAddress(dst)
 
+	auths, err := crane.GetAuthInfo(nil)
+	if err != nil {
+		return fmt.Errorf("auth info is error: %w", err)
+	}
+
 	eg, _ := errgroup.WithContext(ctx)
 	probeCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
@@ -78,6 +84,7 @@ func runSync(cmd *cobra.Command, source, dst string, opts globalOptions) error {
 		Source:        sep,
 		Target:        dst,
 		ReportWriter:  out,
+		Auths:         auths,
 		SelectionOptions: []imagecopy.ImageListSelection{
 			imageListSelection,
 		},

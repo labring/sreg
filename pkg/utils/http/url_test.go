@@ -18,31 +18,71 @@ package http
 
 import (
 	"context"
-	"github.com/labring/sreg/pkg/registry/sync"
+	"io"
+	"net/http"
 	"testing"
+	"time"
 )
 
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
 func TestWaitUntilEndpointAlive(t *testing.T) {
+	originalClient := DefaultClient
+	t.Cleanup(func() {
+		DefaultClient = originalClient
+	})
+
 	type args struct {
 		ctx      context.Context
 		endpoint string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
+		name       string
+		args       args
+		statusCode int
+		wantErr    bool
 	}{
 		{
-			name: "default",
-			args: args{
-				ctx:      context.Background(),
-				endpoint: sync.ParseRegistryAddress("localhost:5050"),
-			},
-			wantErr: false,
+			name:       "ok response",
+			args:       args{},
+			statusCode: http.StatusOK,
+			wantErr:    false,
+		},
+		{
+			name:       "unauthorized response",
+			args:       args{},
+			statusCode: http.StatusUnauthorized,
+			wantErr:    false,
+		},
+		{
+			name:       "unexpected response",
+			args:       args{},
+			statusCode: http.StatusInternalServerError,
+			wantErr:    true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			DefaultClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				if r.URL.Path != "/v2/" {
+					t.Fatalf("unexpected path: %s", r.URL.Path)
+				}
+				return &http.Response{
+					StatusCode: tt.statusCode,
+					Body:       io.NopCloser(http.NoBody),
+					Header:     make(http.Header),
+				}, nil
+			})}
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			tt.args.ctx = ctx
+			tt.args.endpoint = "http://registry.example.com"
+
 			if err := WaitUntilEndpointAlive(tt.args.ctx, tt.args.endpoint); (err != nil) != tt.wantErr {
 				t.Errorf("WaitUntilEndpointAlive() error = %v, wantErr %v", err, tt.wantErr)
 			}
