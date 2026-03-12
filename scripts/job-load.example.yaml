@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sreg-storage-load
+  namespace: default
+spec:
+  ttlSecondsAfterFinished: 604800
+  backoffLimit: 1
+  template:
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      restartPolicy: Never
+      containers:
+        - name: sreg-storage
+          image: your-registry/sreg-storage:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/usr/local/bin/sreg-storage.sh", "load", "--config=/config/config.yaml"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: tmp
+              mountPath: /tmp/sreg-storage
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+      volumes:
+        - name: config
+          configMap:
+            name: sreg-storage-load-config
+        - name: tmp
+          emptyDir:
+            sizeLimit: 20Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sreg-storage-load-config
+  namespace: default
+data:
+  config.yaml: |
+    rclone:
+      remote: "myremote"
+      config:
+        type: "s3"
+        provider: "Other"
+        endpoint: "https://objectstorage.example.com"
+        access_key_id: "replace-me"
+        secret_access_key: "replace-me"
+        override:
+          no_check_certificate: true
+    tmp_dir: "/tmp/sreg-storage"
+    load:
+      source:
+        remote: "myremote:admin-test-sreg/registry-backups/registry-20260312141027.tar.gz"
+      extract_dir: "/tmp/sreg-storage/extracted"
+      local_registry:
+        port: 15001
+      dest_registry:
+        url: "localhost:5000"
