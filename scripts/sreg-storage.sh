@@ -11,10 +11,7 @@
 #   ./sreg-storage.sh load --config=/path/to/config.yaml
 #
 
-set -ex
-
-RCLONE_CONFIG_FILE=""
-RCLONE_GLOBAL_ARGS=()
+set -e
 
 # 颜色输出
 RED='\033[0;31m'
@@ -38,7 +35,7 @@ log_error() {
 # 检查依赖
 check_dependencies() {
     local deps=("sreg" "tar" "gzip" "python3")
-    if [[ "$1" == "load" || "$1" == "save" ]]; then
+    if [[ "$1" == "load" ]] || [[ -n "$RCLONE_REMOTE" ]]; then
         deps+=("rclone")
     fi
 
@@ -92,15 +89,6 @@ try:
     # 导出配置为环境变量格式
     if 'rclone' in config:
         print(f"export RCLONE_REMOTE='{config['rclone'].get('remote', '')}'")
-        rclone_config = config['rclone'].get('config')
-        if rclone_config:
-            print(f"export RCLONE_CONFIG_JSON='{json.dumps(rclone_config)}'")
-            override_config = rclone_config.get('override', {})
-            if isinstance(override_config, dict) and 'no_check_certificate' in override_config:
-                print(f"export RCLONE_NO_CHECK_CERTIFICATE_OVERRIDE='{str(override_config.get('no_check_certificate')).lower()}'")
-            global_config = rclone_config.get('global', {})
-            if isinstance(global_config, dict) and 'no_check_certificate' in global_config:
-                print(f"export RCLONE_NO_CHECK_CERTIFICATE_GLOBAL='{str(global_config.get('no_check_certificate')).lower()}'")
 
     if 'tmp_dir' in config:
         print(f"export TMP_DIR='{config['tmp_dir']}'")
@@ -159,92 +147,15 @@ load_config() {
     fi
 }
 
-# 配置 rclone（优先使用 YAML 中的 config.create，其次使用环境变量/已有 remote）
+# 配置 rclone（通过环境变量）
 setup_rclone_config() {
     local remote="$1"
-    local config_json="${RCLONE_CONFIG_JSON:-}"
-    local no_check_certificate_override="${RCLONE_NO_CHECK_CERTIFICATE_OVERRIDE:-}"
-    local no_check_certificate_global="${RCLONE_NO_CHECK_CERTIFICATE_GLOBAL:-}"
-
-    if [[ -n "$config_json" ]]; then
-        local config_dir="${TMP_DIR}/rclone"
-        local config_file="${config_dir}/rclone.conf"
-
-        mkdir -p "$config_dir"
-        rm -f "$config_file"
-
-        log_info "根据配置文件创建 rclone remote: $remote"
-
-        local create_args
-        if ! create_args=$(RCLONE_REMOTE_NAME="$remote" RCLONE_CONFIG_JSON="$config_json" python3 <<'EOF'
-import json
-import os
-import shlex
-import sys
-
-remote = os.environ["RCLONE_REMOTE_NAME"]
-config = json.loads(os.environ["RCLONE_CONFIG_JSON"])
-
-remote_type = config.get("type")
-if not remote_type:
-    print("missing rclone.config.type", file=sys.stderr)
-    sys.exit(1)
-
-args = ["config", "create", remote, str(remote_type)]
-for key, value in config.items():
-    if key == "type" or value is None:
-        continue
-    if isinstance(value, dict):
-        for sub_key, sub_value in value.items():
-            if sub_value is None:
-                continue
-            flat_key = f"{key}.{sub_key}"
-            if isinstance(sub_value, bool):
-                sub_value = "true" if sub_value else "false"
-            elif isinstance(sub_value, (dict, list)):
-                sub_value = json.dumps(sub_value, ensure_ascii=False)
-            else:
-                sub_value = str(sub_value)
-            args.extend([flat_key, sub_value])
-        continue
-    if isinstance(value, bool):
-        value = "true" if value else "false"
-    elif isinstance(value, (dict, list)):
-        value = json.dumps(value, ensure_ascii=False)
-    else:
-        value = str(value)
-    args.extend([key, value])
-
-print(" ".join(shlex.quote(arg) for arg in args))
-EOF
-); then
-            log_error "解析 rclone.config 失败，请检查 YAML 配置"
-            exit 1
-        fi
-
-        if ! rclone --config "$config_file" $create_args >/dev/null; then
-            log_error "创建 rclone remote 失败"
-            exit 1
-        fi
-
-        export RCLONE_CONFIG="$config_file"
-        RCLONE_CONFIG_FILE="$config_file"
-        RCLONE_GLOBAL_ARGS=(--config "$config_file")
-        if [[ "$no_check_certificate_override" == "true" || "$no_check_certificate_global" == "true" ]]; then
-            RCLONE_GLOBAL_ARGS+=(--no-check-certificate)
-        fi
-        return 0
-    fi
 
     # 检查是否通过环境变量配置了此 remote
     local config_type="RCLONE_CONFIG_${remote^^}_TYPE"
 
     if [[ -n "${!config_type}" ]]; then
         log_info "使用环境变量配置 rclone remote: $remote"
-        RCLONE_GLOBAL_ARGS=()
-        if [[ "$no_check_certificate_override" == "true" || "$no_check_certificate_global" == "true" ]]; then
-            RCLONE_GLOBAL_ARGS+=(--no-check-certificate)
-        fi
         return 0
     fi
 
@@ -261,39 +172,10 @@ EOF
     fi
 
     log_info "使用已配置的 rclone remote: $remote"
-    RCLONE_GLOBAL_ARGS=()
-    if [[ "$no_check_certificate_override" == "true" || "$no_check_certificate_global" == "true" ]]; then
-        RCLONE_GLOBAL_ARGS+=(--no-check-certificate)
-    fi
-}
-
-rclone_run() {
-    rclone "${RCLONE_GLOBAL_ARGS[@]}" "$@"
-}
-
-ensure_remote_parent_dir() {
-    local remote="$1"
-    local remote_file_path="$2"
-    local parent_dir="${remote_file_path%/*}"
-
-    if [[ "$parent_dir" == "$remote_file_path" || -z "$parent_dir" || "$parent_dir" == "." ]]; then
-        return 0
-    fi
-
-    log_info "确保对象存储目录存在: ${remote}:${parent_dir}"
-    if ! rclone_run mkdir "${remote}:${parent_dir}"; then
-        log_error "创建对象存储目录失败: ${remote}:${parent_dir}"
-        exit 1
-    fi
 }
 
 # 清理临时目录
 cleanup() {
-    if [[ -n "$RCLONE_CONFIG_FILE" && -f "$RCLONE_CONFIG_FILE" ]]; then
-        log_info "清理临时 rclone 配置: $RCLONE_CONFIG_FILE"
-        rm -f "$RCLONE_CONFIG_FILE"
-        rmdir "$(dirname "$RCLONE_CONFIG_FILE")" 2>/dev/null || true
-    fi
     if [[ -d "$TMP_DIR" ]]; then
         log_info "清理临时目录: $TMP_DIR"
         rm -rf "$TMP_DIR"
@@ -360,16 +242,14 @@ cmd_save() {
     log_info "步骤3/4: 上传到对象存储..."
 
     # 构建远程路径
-    local remote_object_path="$tar_file"
+    local remote_path="${RCLONE_REMOTE}:"
     if [[ -n "$RCLONE_PATH" ]]; then
-        remote_object_path="${RCLONE_PATH%/}/$tar_file"
+        remote_path="${RCLONE_REMOTE}:${RCLONE_PATH}/$tar_file"
+    else
+        remote_path="${RCLONE_REMOTE}:$tar_file"
     fi
 
-    ensure_remote_parent_dir "$RCLONE_REMOTE" "$remote_object_path"
-
-    local remote_path="${RCLONE_REMOTE}:${remote_object_path}"
-
-    if ! rclone_run copyto "$tar_path" "$remote_path" --progress; then
+    if ! rclone copy "$tar_path" "$remote_path" --progress; then
         log_error "上传到对象存储失败"
         cleanup
         exit 1
@@ -424,7 +304,7 @@ cmd_load() {
         tar_path="$TMP_DIR/$filename"
         source_info="$SOURCE_REMOTE"
 
-        if ! rclone_run copyto "$SOURCE_REMOTE" "$tar_path" --progress; then
+        if ! rclone copy "$SOURCE_REMOTE" "$tar_path" --progress; then
             log_error "从对象存储下载失败"
             cleanup
             exit 1
@@ -528,9 +408,6 @@ main() {
         echo "配置文件格式 (YAML):"
         echo "  rclone:"
         echo "    remote: \"myremote\""
-        echo "    config:"
-        echo "      type: \"s3\""
-        echo "      endpoint: \"https://s3.amazonaws.com\""
         echo "  save:"
         echo "    path: \"my-bucket/backups\""
         echo "    images:"
