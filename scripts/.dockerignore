@@ -1,0 +1,50 @@
+# Git 相关
+.git
+.gitignore
+.gitattributes
+
+# 文档
+*.md
+README*
+CHANGELOG*
+LICENSE
+docs/
+
+# 构建产物
+bin/
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# 临时文件
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+
+# IDE 和编辑器
+.idea/
+.vscode/
+*.iml
+.vs/
+*.suo
+*.user
+
+# 测试和覆盖率
+*.coverprofile
+coverage.html
+coverage.txt
+vendor/
+
+# 其他
+scripts/config*.yaml
+!.dockerignore
+Dockerfile*
