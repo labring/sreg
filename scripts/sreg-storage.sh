@@ -11,7 +11,7 @@
 #   ./sreg-storage.sh load --config=/path/to/config.yaml
 #
 
-set -ex
+set -euo pipefail
 
 RCLONE_CONFIG_FILE=""
 RCLONE_GLOBAL_ARGS=()
