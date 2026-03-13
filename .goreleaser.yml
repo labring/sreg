@@ -37,10 +37,6 @@ builds:
         env:
           - CGO_ENABLED=1
           - CC=aarch64-linux-gnu-gcc
-archives:
-  - files:
-      - Dockerfile
-      - Dockerfile.sreg-storage
 dockers:
   - id: sreg-linux-amd64
     ids:
