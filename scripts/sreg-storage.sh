@@ -392,7 +392,7 @@ cmd_save() {
 
     local remote_path="${RCLONE_REMOTE}:${remote_object_path}"
 
-    if ! rclone_run copy "$tar_path" "$remote_path" --progress; then
+    if ! rclone_run copyto "$tar_path" "$remote_path" --progress; then
         log_error "上传到对象存储失败"
         cleanup
         exit 1
@@ -447,7 +447,7 @@ cmd_load() {
         tar_path="$TMP_DIR/$filename"
         source_info="$SOURCE_REMOTE"
 
-        if ! rclone_run copy "$SOURCE_REMOTE" "$tar_path" --progress; then
+        if ! rclone_run copyto "$SOURCE_REMOTE" "$tar_path" --progress; then
             log_error "从对象存储下载失败"
             cleanup
             exit 1
