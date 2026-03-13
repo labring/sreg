@@ -57,9 +57,9 @@ data:
     tmp_dir: "/tmp/sreg-storage"
     load:
       source:
-        remote: "myremote:admin-test-sreg/registry-backups/registry-20260312141027.tar.gz"
+        remote: "myremote:admin-test-sreg/registry-backups/registry-20260313093103.tar.gz"
       extract_dir: "/tmp/sreg-storage/extracted"
       local_registry:
         port: 15001
       dest_registry:
-        url: "localhost:5000"
+        url: "sealos.hub:5000"

@@ -35,6 +35,72 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# 确保 Docker 配置文件存在（从 image-cri-shim 同步认证信息）
+ensure_docker_config() {
+    local docker_config="$HOME/.docker/config.json"
+    local shim_config="/etc/image-cri-shim.yaml"
+
+    # 如果 Docker 配置已存在，直接返回
+    if [[ -f "$docker_config" ]]; then
+        log_info "Docker 配置文件已存在: $docker_config"
+        return 0
+    fi
+
+    # 检查 image-cri-shim 配置是否存在
+    if [[ ! -f "$shim_config" ]]; then
+        log_warn "未找到 $shim_config，跳过认证信息同步"
+        return 0
+    fi
+
+    # 从 image-cri-shim.yaml 提取 auth 字段（格式: username:password）
+    # 使用 sed 而不是 grep -P（BusyBox 不支持）
+    local auth_line
+    auth_line=$(sed -n 's/^[[:space:]]*auth:[[:space:]]*//p' "$shim_config" | head -n 1)
+
+    if [[ -z "$auth_line" ]]; then
+        log_warn "$shim_config 中未找到 auth 配置"
+        return 0
+    fi
+
+    log_info "从 $shim_config 读取到认证信息"
+
+    # 提取 registry 地址（格式: http://sealos.hub:5000 或 sealos.hub:5000）
+    local registry_url
+    registry_url=$(sed -n 's/^[[:space:]]*address:[[:space:]]*//p' "$shim_config" | head -n 1 | sed 's|^http://||' | sed 's|^https://||')
+
+    if [[ -z "$registry_url" ]]; then
+        log_warn "$shim_config 中未找到 address 配置，使用默认: sealos.hub:5000"
+        registry_url="sealos.hub:5000"
+    fi
+
+    log_info "目标 registry: $registry_url"
+
+    # 将 username:password 转换为 base64
+    local auth_base64
+    auth_base64=$(echo -n "$auth_line" | base64)
+
+    # 创建 Docker 配置目录
+    mkdir -p "$(dirname "$docker_config")"
+
+    # 写入配置文件
+    cat > "$docker_config" <<EOF
+{
+  "auths": {
+    "$registry_url": {
+      "auth": "$auth_base64"
+    }
+  }
+}
+EOF
+
+    if [[ -f "$docker_config" ]]; then
+        log_info "已创建 Docker 配置文件: $docker_config"
+        log_info "已添加 $registry_url 的认证信息"
+    else
+        log_warn "创建 Docker 配置文件失败"
+    fi
+}
+
 # 检查依赖
 check_dependencies() {
     local deps=("sreg" "tar" "gzip" "python3")
@@ -319,7 +385,7 @@ cleanup() {
     fi
     if [[ -d "$TMP_DIR" ]]; then
         log_info "清理临时目录: $TMP_DIR"
-        rm -rf "$TMP_DIR"
+        rm -rf "$TMP_DIR" 2>/dev/null || true
     fi
 }
 
@@ -328,6 +394,7 @@ cmd_save() {
     local config_file="$1"
 
     check_dependencies "save"
+    ensure_docker_config  # 确保 Docker 配置存在
     load_config "$config_file"
     setup_rclone_config "$RCLONE_REMOTE"
 
@@ -420,6 +487,7 @@ cmd_load() {
     local config_file="$1"
 
     check_dependencies "load"
+    ensure_docker_config  # 确保 Docker 配置存在
     load_config "$config_file"
 
     # 验证必选配置
