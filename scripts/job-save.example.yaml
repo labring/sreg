@@ -13,7 +13,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: sreg-storage
-          image: your-registry/sreg-storage:latest
+          image: registry.cn-hangzhou.aliyuncs.com/bxy4543/sreg-storage:0313.1655
           imagePullPolicy: IfNotPresent
           command: ["/usr/local/bin/sreg-storage.sh", "save", "--config=/config/config.yaml"]
           volumeMounts:
@@ -23,7 +23,6 @@ spec:
               mountPath: /tmp/sreg-storage
             - name: image-cri-shim-config
               mountPath: /etc/image-cri-shim.yaml
-              subPath: image-cri-shim.yaml
               readOnly: true
           resources:
             requests:
@@ -64,5 +63,6 @@ data:
     tmp_dir: "/tmp/sreg-storage"
     save:
       path: "admin-test-sreg/registry-backups"
+      filename: "my-registry-test.tar.gz"  # 可选: 自定义文件名，支持 {timestamp} 占位符
       images:
         - "hello-world"

@@ -187,6 +187,8 @@ try:
         save_config = config['save']
         if 'path' in save_config:
             print(f"export RCLONE_PATH='{save_config['path']}'")
+        if 'filename' in save_config:
+            print(f"export SAVE_FILENAME='{save_config['filename']}'")
         if 'images' in save_config:
             images = save_config['images']
             if isinstance(images, list):
@@ -407,12 +409,27 @@ cmd_save() {
     local images=($(echo "$IMAGES" | python3 -c "import sys, json; print(' '.join(json.load(sys.stdin)))"))
 
     local timestamp=$(date +%Y%m%d%H%M%S)
+
+    # 确定文件名（支持配置或使用默认值）
+    local tar_file="${SAVE_FILENAME:-}"
+    if [[ -z "$tar_file" ]]; then
+        # 默认文件名格式
+        tar_file="registry-$timestamp.tar.gz"
+    else
+        # 支持在文件名中使用 {timestamp} 占位符
+        tar_file="${tar_file//\{timestamp\}/$timestamp}"
+        # 确保文件名以 .tar.gz 结尾
+        if [[ ! "$tar_file" =~ \.tar\.gz$ ]]; then
+            tar_file="${tar_file}.tar.gz"
+        fi
+    fi
+
     local registry_dir="$TMP_DIR/registry-$timestamp"
-    local tar_file="registry-$timestamp.tar.gz"
     local tar_path="$TMP_DIR/$tar_file"
 
     log_info "开始保存镜像..."
     log_info "镜像列表: ${images[*]}"
+    log_info "目标文件: $tar_file"
 
     # 1. 保存镜像到本地目录
     log_info "步骤1/4: 保存镜像到本地目录..."
@@ -624,6 +641,7 @@ main() {
         echo "      endpoint: \"https://s3.amazonaws.com\""
         echo "  save:"
         echo "    path: \"my-bucket/backups\""
+        echo "    filename: \"registry-{timestamp}.tar.gz\"  # 可选，支持 {timestamp} 占位符"
         echo "    images:"
         echo "      - \"nginx:latest\""
         echo "      - \"redis:7-alpine\""
