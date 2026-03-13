@@ -46,4 +46,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sreg-linux-arm64
-          path: dist/sreg_linux_arm64/sreg
+          path: dist/sreg_linux_arm64_v8.0/sreg
