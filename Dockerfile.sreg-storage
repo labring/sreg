@@ -1,18 +1,19 @@
 # 运行阶段：直接使用 GoReleaser 产出的二进制，不在 Docker 中重复编译
-FROM alpine:3.19
+FROM ubuntu:24.04
 
-RUN apk add --no-cache \
-    bash \
-    python3 \
-    py3-yaml \
-    tar \
-    gzip \
-    ca-certificates \
-    tzdata \
-    libgcc \
-    gpgme \
-    lvm2 \
-    rclone
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      bash \
+      python3 \
+      python3-yaml \
+      tar \
+      gzip \
+      ca-certificates \
+      tzdata \
+      libgpgme11 \
+      lvm2 \
+      rclone && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY sreg /usr/local/bin/sreg
 COPY scripts/sreg-storage.sh /usr/local/bin/sreg-storage.sh
