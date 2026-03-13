@@ -93,7 +93,7 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           ARCH="${{ matrix.arch }}"
           REF_TAG="${GITHUB_REF_NAME}"
-          bash scripts/docker-build-push.sh "dist-bin/sreg" "${OWNER}" "${ARCH}" "${REF_TAG}" "${SHORT_SHA}"
+          bash scripts/docker-build-push.sh "dist-bin" "${OWNER}" "${ARCH}" "${REF_TAG}" "${SHORT_SHA}"
 
   docker_manifest:
     name: Docker Manifests

@@ -91,7 +91,46 @@ jobs:
           OWNER="${{ steps.owner.outputs.value }}"
           SHORT_SHA="${GITHUB_SHA::7}"
           ARCH="${{ matrix.arch }}"
-          bash scripts/docker-build-push.sh "dist-bin/sreg" "${OWNER}" "${ARCH}" "main" "${SHORT_SHA}"
+          bash scripts/docker-build-push.sh "dist-bin" "${OWNER}" "${ARCH}" "main" "${SHORT_SHA}"
+
+  docker_build_pr:
+    name: Docker Build Only (${{ matrix.arch }})
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            artifact: sreg-linux-amd64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            artifact: sreg-linux-arm64
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Download binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist-bin
+
+      - name: Resolve image owner
+        id: owner
+        run: echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Build docker images only
+        run: |
+          set -euo pipefail
+          OWNER="${{ steps.owner.outputs.value }}"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          ARCH="${{ matrix.arch }}"
+          bash scripts/docker-build-push.sh "dist-bin" "${OWNER}" "${ARCH}" "pr-${{ github.event.pull_request.number }}" "${SHORT_SHA}" "no-push"
 
   docker_manifest:
     name: Docker Manifests
