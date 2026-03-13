@@ -47,6 +47,11 @@ jobs:
           name: sreg-linux-arm64
           path: dist/sreg_linux_arm64*/sreg
 
+      - name: Resolve image owner
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: owner
+        run: echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/setup-buildx-action@v3
@@ -64,6 +69,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          OWNER="${{ steps.owner.outputs.value }}"
           SHORT_SHA="${GITHUB_SHA::7}"
           AMD64_BIN="$(find dist -type f -path '*/sreg_linux_amd64*/sreg' | head -n 1)"
           ARM64_BIN="$(find dist -type f -path '*/sreg_linux_arm64*/sreg' | head -n 1)"
@@ -83,8 +89,8 @@ jobs:
             docker buildx build \
               --platform "linux/${arch}" \
               -f "${dockerfile}" \
-              -t "ghcr.io/labring/${image}:main-${arch}" \
-              -t "ghcr.io/labring/${image}:sha-${SHORT_SHA}-${arch}" \
+              -t "ghcr.io/${OWNER}/${image}:main-${arch}" \
+              -t "ghcr.io/${OWNER}/${image}:sha-${SHORT_SHA}-${arch}" \
               --push .
           }
 
@@ -94,13 +100,13 @@ jobs:
           build_and_push "sreg-storage" "Dockerfile.sreg-storage" "${ARM64_BIN}" "arm64"
 
           docker buildx imagetools create \
-            -t "ghcr.io/labring/sreg:main" \
-            -t "ghcr.io/labring/sreg:sha-${SHORT_SHA}" \
-            "ghcr.io/labring/sreg:main-amd64" \
-            "ghcr.io/labring/sreg:main-arm64"
+            -t "ghcr.io/${OWNER}/sreg:main" \
+            -t "ghcr.io/${OWNER}/sreg:sha-${SHORT_SHA}" \
+            "ghcr.io/${OWNER}/sreg:main-amd64" \
+            "ghcr.io/${OWNER}/sreg:main-arm64"
 
           docker buildx imagetools create \
-            -t "ghcr.io/labring/sreg-storage:main" \
-            -t "ghcr.io/labring/sreg-storage:sha-${SHORT_SHA}" \
-            "ghcr.io/labring/sreg-storage:main-amd64" \
-            "ghcr.io/labring/sreg-storage:main-arm64"
+            -t "ghcr.io/${OWNER}/sreg-storage:main" \
+            -t "ghcr.io/${OWNER}/sreg-storage:sha-${SHORT_SHA}" \
+            "ghcr.io/${OWNER}/sreg-storage:main-amd64" \
+            "ghcr.io/${OWNER}/sreg-storage:main-arm64"
