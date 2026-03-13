@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: sreg-storage-load
-  namespace: default
+  namespace: ns-admin
 spec:
   ttlSecondsAfterFinished: 604800
   backoffLimit: 1
@@ -13,7 +13,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: sreg-storage
-          image: your-registry/sreg-storage:latest
+          image: registry.cn-hangzhou.aliyuncs.com/bxy4543/sreg-storage:0313.1654
           imagePullPolicy: IfNotPresent
           command: ["/usr/local/bin/sreg-storage.sh", "load", "--config=/config/config.yaml"]
           volumeMounts:
@@ -21,6 +21,10 @@ spec:
               mountPath: /config
             - name: tmp
               mountPath: /tmp/sreg-storage
+            - name: image-cri-shim-config
+              mountPath: /etc/image-cri-shim.yaml
+              subPath: image-cri-shim.yaml
+              readOnly: true
           resources:
             requests:
               cpu: "500m"
@@ -35,12 +39,16 @@ spec:
         - name: tmp
           emptyDir:
             sizeLimit: 20Gi
+        - name: image-cri-shim-config
+          hostPath:
+            path: /etc/image-cri-shim.yaml
+            type: File
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: sreg-storage-load-config
-  namespace: default
+  namespace: ns-admin
 data:
   config.yaml: |
     rclone:
@@ -48,12 +56,11 @@ data:
       config:
         type: "s3"
         provider: "Other"
-        endpoint: "https://objectstorage.example.com"
-        access_key_id: "replace-me"
-        secret_access_key: "replace-me"
-        override:
-          no_check_certificate: true
-          s3-no-check-bucket: true
+        endpoint: "objectstorageapi.192.168.10.70.nip.io"
+        access_key_id: "admin"
+        secret_access_key: "lvn25znf4tl5mtww"
+        no_check_certificate: true
+        s3-no-check-bucket: true
     tmp_dir: "/tmp/sreg-storage"
     load:
       source:
