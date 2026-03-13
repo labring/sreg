@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Set up Go 1.x
         uses: actions/setup-go@v5
@@ -47,66 +46,76 @@ jobs:
           name: sreg-linux-arm64
           path: dist/sreg_linux_arm64*/sreg
 
+  docker_publish:
+    name: Docker (${{ matrix.arch }})
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            artifact: sreg-linux-amd64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            artifact: sreg-linux-arm64
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v4
+
+      - name: Download binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist-bin
+
       - name: Resolve image owner
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: owner
         run: echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/setup-buildx-action@v3
-
       - name: Login to GHCR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push main Docker images
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Build and push docker images
         run: |
           set -euo pipefail
-
           OWNER="${{ steps.owner.outputs.value }}"
           SHORT_SHA="${GITHUB_SHA::7}"
-          AMD64_BIN="$(find dist -type f -path '*/sreg_linux_amd64*/sreg' | head -n 1)"
-          ARM64_BIN="$(find dist -type f -path '*/sreg_linux_arm64*/sreg' | head -n 1)"
+          ARCH="${{ matrix.arch }}"
+          bash scripts/docker-build-push.sh "dist-bin/sreg" "${OWNER}" "${ARCH}" "main" "${SHORT_SHA}"
 
-          if [ -z "${AMD64_BIN}" ] || [ -z "${ARM64_BIN}" ]; then
-            echo "failed to locate linux binaries in dist/"
-            exit 1
-          fi
+  docker_manifest:
+    name: Docker Manifests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: docker_publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Resolve image owner
+        id: owner
+        run: echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-          build_and_push() {
-            local image="$1"
-            local dockerfile="$2"
-            local binary="$3"
-            local arch="$4"
-            cp "${binary}" sreg
-            chmod +x sreg
-            docker buildx build \
-              --platform "linux/${arch}" \
-              -f "${dockerfile}" \
-              -t "ghcr.io/${OWNER}/${image}:main-${arch}" \
-              -t "ghcr.io/${OWNER}/${image}:sha-${SHORT_SHA}-${arch}" \
-              --push .
-          }
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-          build_and_push "sreg" "Dockerfile" "${AMD64_BIN}" "amd64"
-          build_and_push "sreg" "Dockerfile" "${ARM64_BIN}" "arm64"
-          build_and_push "sreg-storage" "Dockerfile.sreg-storage" "${AMD64_BIN}" "amd64"
-          build_and_push "sreg-storage" "Dockerfile.sreg-storage" "${ARM64_BIN}" "arm64"
-
-          docker buildx imagetools create \
-            -t "ghcr.io/${OWNER}/sreg:main" \
-            -t "ghcr.io/${OWNER}/sreg:sha-${SHORT_SHA}" \
-            "ghcr.io/${OWNER}/sreg:main-amd64" \
-            "ghcr.io/${OWNER}/sreg:main-arm64"
-
-          docker buildx imagetools create \
-            -t "ghcr.io/${OWNER}/sreg-storage:main" \
-            -t "ghcr.io/${OWNER}/sreg-storage:sha-${SHORT_SHA}" \
-            "ghcr.io/${OWNER}/sreg-storage:main-amd64" \
-            "ghcr.io/${OWNER}/sreg-storage:main-arm64"
+      - name: Create and push manifests
+        run: |
+          set -euo pipefail
+          OWNER="${{ steps.owner.outputs.value }}"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          bash scripts/docker-manifest-push.sh "${OWNER}" "main" "${SHORT_SHA}"

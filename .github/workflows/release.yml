@@ -29,8 +29,51 @@ jobs:
             libbtrfs-dev libgpgme-dev libdevmapper-dev \
             qemu-user-static binfmt-support
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          args: release  --timeout=1h
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload linux-amd64
+        uses: actions/upload-artifact@v4
+        with:
+          name: sreg-release-linux-amd64
+          path: dist/sreg_linux_amd64*/sreg
+
+      - name: Upload linux-arm64
+        uses: actions/upload-artifact@v4
+        with:
+          name: sreg-release-linux-arm64
+          path: dist/sreg_linux_arm64*/sreg
+
+  docker_publish:
+    name: Docker (${{ matrix.arch }})
+    needs: goreleaser
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            artifact: sreg-release-linux-amd64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            artifact: sreg-release-linux-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist-bin
 
       - name: Resolve image owner
         id: owner
@@ -43,10 +86,38 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+      - name: Build and push docker images
+        run: |
+          set -euo pipefail
+          OWNER="${{ steps.owner.outputs.value }}"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          ARCH="${{ matrix.arch }}"
+          REF_TAG="${GITHUB_REF_NAME}"
+          bash scripts/docker-build-push.sh "dist-bin/sreg" "${OWNER}" "${ARCH}" "${REF_TAG}" "${SHORT_SHA}"
+
+  docker_manifest:
+    name: Docker Manifests
+    needs: docker_publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Resolve image owner
+        id: owner
+        run: echo "value=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          args: release  --timeout=1h
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_OWNER: ${{ steps.owner.outputs.value }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push manifests
+        run: |
+          set -euo pipefail
+          OWNER="${{ steps.owner.outputs.value }}"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          REF_TAG="${GITHUB_REF_NAME}"
+          bash scripts/docker-manifest-push.sh "${OWNER}" "${REF_TAG}" "${SHORT_SHA}"
