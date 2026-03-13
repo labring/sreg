@@ -53,6 +53,7 @@ data:
         secret_access_key: "replace-me"
         override:
           no_check_certificate: true
+          s3-no-check-bucket: true
     tmp_dir: "/tmp/sreg-storage"
     load:
       source:

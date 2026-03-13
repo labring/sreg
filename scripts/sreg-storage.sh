@@ -95,12 +95,24 @@ try:
         rclone_config = config['rclone'].get('config')
         if rclone_config:
             print(f"export RCLONE_CONFIG_JSON='{json.dumps(rclone_config)}'")
+            if 'no_check_certificate' in rclone_config:
+                value = str(rclone_config.get('no_check_certificate')).lower()
+                print(f"export RCLONE_NO_CHECK_CERTIFICATE_OVERRIDE='{value}'")
+                print(f"export RCLONE_NO_CHECK_CERTIFICATE_GLOBAL='{value}'")
+            if 's3-no-check-bucket' in rclone_config:
+                value = str(rclone_config.get('s3-no-check-bucket')).lower()
+                print(f"export RCLONE_S3_NO_CHECK_BUCKET_OVERRIDE='{value}'")
+                print(f"export RCLONE_S3_NO_CHECK_BUCKET_GLOBAL='{value}'")
             override_config = rclone_config.get('override', {})
             if isinstance(override_config, dict) and 'no_check_certificate' in override_config:
                 print(f"export RCLONE_NO_CHECK_CERTIFICATE_OVERRIDE='{str(override_config.get('no_check_certificate')).lower()}'")
+            if isinstance(override_config, dict) and 's3-no-check-bucket' in override_config:
+                print(f"export RCLONE_S3_NO_CHECK_BUCKET_OVERRIDE='{str(override_config.get('s3-no-check-bucket')).lower()}'")
             global_config = rclone_config.get('global', {})
             if isinstance(global_config, dict) and 'no_check_certificate' in global_config:
                 print(f"export RCLONE_NO_CHECK_CERTIFICATE_GLOBAL='{str(global_config.get('no_check_certificate')).lower()}'")
+            if isinstance(global_config, dict) and 's3-no-check-bucket' in global_config:
+                print(f"export RCLONE_S3_NO_CHECK_BUCKET_GLOBAL='{str(global_config.get('s3-no-check-bucket')).lower()}'")
 
     if 'tmp_dir' in config:
         print(f"export TMP_DIR='{config['tmp_dir']}'")
@@ -165,6 +177,8 @@ setup_rclone_config() {
     local config_json="${RCLONE_CONFIG_JSON:-}"
     local no_check_certificate_override="${RCLONE_NO_CHECK_CERTIFICATE_OVERRIDE:-}"
     local no_check_certificate_global="${RCLONE_NO_CHECK_CERTIFICATE_GLOBAL:-}"
+    local s3_no_check_bucket_override="${RCLONE_S3_NO_CHECK_BUCKET_OVERRIDE:-}"
+    local s3_no_check_bucket_global="${RCLONE_S3_NO_CHECK_BUCKET_GLOBAL:-}"
 
     if [[ -n "$config_json" ]]; then
         local config_dir="${TMP_DIR}/rclone"
@@ -233,6 +247,9 @@ EOF
         if [[ "$no_check_certificate_override" == "true" || "$no_check_certificate_global" == "true" ]]; then
             RCLONE_GLOBAL_ARGS+=(--no-check-certificate)
         fi
+        if [[ "$s3_no_check_bucket_override" == "true" || "$s3_no_check_bucket_global" == "true" ]]; then
+            RCLONE_GLOBAL_ARGS+=(--s3-no-check-bucket)
+        fi
         return 0
     fi
 
@@ -244,6 +261,9 @@ EOF
         RCLONE_GLOBAL_ARGS=()
         if [[ "$no_check_certificate_override" == "true" || "$no_check_certificate_global" == "true" ]]; then
             RCLONE_GLOBAL_ARGS+=(--no-check-certificate)
+        fi
+        if [[ "$s3_no_check_bucket_override" == "true" || "$s3_no_check_bucket_global" == "true" ]]; then
+            RCLONE_GLOBAL_ARGS+=(--s3-no-check-bucket)
         fi
         return 0
     fi
@@ -265,6 +285,9 @@ EOF
     if [[ "$no_check_certificate_override" == "true" || "$no_check_certificate_global" == "true" ]]; then
         RCLONE_GLOBAL_ARGS+=(--no-check-certificate)
     fi
+    if [[ "$s3_no_check_bucket_override" == "true" || "$s3_no_check_bucket_global" == "true" ]]; then
+        RCLONE_GLOBAL_ARGS+=(--s3-no-check-bucket)
+    fi
 }
 
 rclone_run() {
@@ -280,11 +303,11 @@ ensure_remote_parent_dir() {
         return 0
     fi
 
-    log_info "确保对象存储目录存在: ${remote}:${parent_dir}"
-    if ! rclone_run mkdir "${remote}:${parent_dir}"; then
-        log_error "创建对象存储目录失败: ${remote}:${parent_dir}"
-        exit 1
-    fi
+#    log_info "确保对象存储目录存在: ${remote}:${parent_dir}"
+#    if ! rclone_run mkdir "${remote}:${parent_dir}"; then
+#        log_error "创建对象存储目录失败: ${remote}:${parent_dir}"
+#        exit 1
+#    fi
 }
 
 # 清理临时目录
@@ -369,7 +392,7 @@ cmd_save() {
 
     local remote_path="${RCLONE_REMOTE}:${remote_object_path}"
 
-    if ! rclone_run copyto "$tar_path" "$remote_path" --progress; then
+    if ! rclone_run copy "$tar_path" "$remote_path" --progress; then
         log_error "上传到对象存储失败"
         cleanup
         exit 1
@@ -424,7 +447,7 @@ cmd_load() {
         tar_path="$TMP_DIR/$filename"
         source_info="$SOURCE_REMOTE"
 
-        if ! rclone_run copyto "$SOURCE_REMOTE" "$tar_path" --progress; then
+        if ! rclone_run copy "$SOURCE_REMOTE" "$tar_path" --progress; then
             log_error "从对象存储下载失败"
             cleanup
             exit 1
