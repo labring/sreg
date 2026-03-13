@@ -8,12 +8,15 @@ spec:
   backoffLimit: 1
   template:
     spec:
-      hostNetwork: true
+      hostAliases:
+        - ip: 192.168.10.70
+          hostnames:
+            - sealos.hub
       dnsPolicy: ClusterFirstWithHostNet
       restartPolicy: Never
       containers:
         - name: sreg-storage
-          image: registry.cn-hangzhou.aliyuncs.com/bxy4543/sreg-storage:0313.1655
+          image: ghcr.io/labring/sreg-storage:sha-68572e8
           imagePullPolicy: IfNotPresent
           command: ["/usr/local/bin/sreg-storage.sh", "load", "--config=/config/config.yaml"]
           volumeMounts:
