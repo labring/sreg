@@ -1,0 +1,72 @@
+# 多阶段构建 - 构建阶段
+FROM golang:1.23-alpine AS builder
+
+# 安装构建依赖和 CGO 所需的 C 库
+RUN apk add --no-cache \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    gpgme-dev \
+    btrfs-progs-dev \
+    lvm2-dev
+
+# 设置工作目录
+WORKDIR /build
+
+# 复制 go.mod 和 go.sum
+COPY go.mod go.sum ./
+
+# 下载依赖
+RUN go mod download
+
+# 复制源代码
+COPY . .
+
+# 构建 sreg 二进制文件（使用 CGO 和正确的构建标签）
+RUN CGO_ENABLED=0 \
+    go build \
+    -tags "containers_image_openpgp netgo exclude_graphdriver_devicemapper osusergo exclude_graphdriver_btrfs" \
+    -ldflags="-s -w" \
+    -o sreg .
+
+# 运行阶段
+FROM alpine:3.19
+
+# 安装运行时依赖和 CGO 运行时库
+RUN apk add --no-cache \
+    bash \
+    python3 \
+    py3-yaml \
+    tar \
+    gzip \
+    ca-certificates \
+    tzdata \
+    gpgme \
+    lvm2 \
+    libressl
+
+# 安装 rclone (直接使用 apk 包)
+RUN apk add --no-cache rclone
+
+# 从构建阶段复制 sreg 二进制文件
+COPY --from=builder /build/sreg /usr/local/bin/sreg
+
+# 复制脚本文件
+COPY scripts/sreg-storage.sh /usr/local/bin/sreg-storage.sh
+
+# 设置脚本可执行权限
+RUN chmod +x /usr/local/bin/sreg-storage.sh && \
+    chmod +x /usr/local/bin/sreg
+
+# 创建工作目录
+RUN mkdir -p /tmp/sreg-storage
+
+# 设置工作目录
+WORKDIR /tmp/sreg-storage
+
+# 定义默认入口点
+ENTRYPOINT ["/usr/local/bin/sreg-storage.sh"]
+
+# 默认命令（显示帮助信息）
+CMD ["--help"]

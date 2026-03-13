@@ -124,6 +124,9 @@ kubectl logs -l job-name=sreg-storage-load -f
 rclone:
   remote: "myremote"
   config:
+    # 顶层写法也兼容，脚本会自动按运行参数处理
+    no_check_certificate: true
+    s3-no-check-bucket: true
     type: "s3"
     provider: "Other"
     endpoint: "https://objectstorage.example.com"
@@ -131,13 +134,20 @@ rclone:
     secret_access_key: "secret"
     override:
       no_check_certificate: true
+      s3-no-check-bucket: true
 ```
+
+推荐将运行时开关放在 `override` 或 `global` 下；如果直接写在 `rclone.config` 顶层，当前脚本也会兼容处理。
 
 如果对象存储使用自签名证书，需确认：
 
 - 服务端证书域名与访问域名一致
 - 证书链完整
 - 或显式允许跳过证书校验
+
+如果对象存储不支持 bucket 存在性探测，需同时启用：
+
+- `s3-no-check-bucket: true`
 
 ## 6. 清理与排查
 
