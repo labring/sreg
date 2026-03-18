@@ -67,5 +67,10 @@ data:
     save:
       path: "admin-test-sreg/registry-backups"
       filename: "my-registry-test.tar.gz"  # 可选: 自定义文件名，支持 {timestamp} 占位符
+      # 可选: 私有仓库认证配置（优先级高于 /etc/image-cri-shim.yaml）
+      registry_auth:
+        registry: "your-registry.com:5000"  # 仓库地址（会自动移除 http:// 或 https:// 前缀）
+        username: "your-username"            # 用户名
+        password: "your-password"            # 密码
       images:
         - "hello-world"
