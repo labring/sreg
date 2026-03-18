@@ -35,10 +35,9 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 确保 Docker 配置文件存在（从 image-cri-shim 同步认证信息）
+# 确保 Docker 配置文件存在（从配置文件或 image-cri-shim 同步认证信息）
 ensure_docker_config() {
     local docker_config="$HOME/.docker/config.json"
-    local shim_config="/etc/image-cri-shim.yaml"
 
     # 如果 Docker 配置已存在，直接返回
     if [[ -f "$docker_config" ]]; then
@@ -46,31 +45,48 @@ ensure_docker_config() {
         return 0
     fi
 
-    # 检查 image-cri-shim 配置是否存在
-    if [[ ! -f "$shim_config" ]]; then
-        log_warn "未找到 $shim_config，跳过认证信息同步"
-        return 0
-    fi
+    local registry_url=""
+    local auth_line=""
 
-    # 从 image-cri-shim.yaml 提取 auth 字段（格式: username:password）
-    # 使用 sed 而不是 grep -P（BusyBox 不支持）
-    local auth_line
-    auth_line=$(sed -n 's/^[[:space:]]*auth:[[:space:]]*//p' "$shim_config" | head -n 1)
+    # 优先使用配置文件中的认证信息
+    if [[ -n "${REGISTRY_AUTH_REGISTRY:-}" && -n "${REGISTRY_AUTH_USERNAME:-}" && -n "${REGISTRY_AUTH_PASSWORD:-}" ]]; then
+        registry_url="$REGISTRY_AUTH_REGISTRY"
+        # 移除协议前缀（如果有）
+        registry_url=$(echo "$registry_url" | sed 's|^http://||' | sed 's|^https://||')
+        auth_line="${REGISTRY_AUTH_USERNAME}:${REGISTRY_AUTH_PASSWORD}"
+        log_info "从配置文件读取到认证信息"
 
-    if [[ -z "$auth_line" ]]; then
-        log_warn "$shim_config 中未找到 auth 配置"
-        return 0
-    fi
+        # 取消环境变量，避免传递给 sreg 命令（sreg 会尝试解析它们但期望不同格式）
+        unset REGISTRY_AUTH_REGISTRY
+        unset REGISTRY_AUTH_USERNAME
+        unset REGISTRY_AUTH_PASSWORD
 
-    log_info "从 $shim_config 读取到认证信息"
+    # 其次从 image-cri-shim 配置读取
+    else
+        local shim_config="/etc/image-cri-shim.yaml"
+        if [[ ! -f "$shim_config" ]]; then
+            log_warn "未找到 $shim_config，且配置文件中未提供 registry_auth，跳过认证信息同步"
+            return 0
+        fi
 
-    # 提取 registry 地址（格式: http://sealos.hub:5000 或 sealos.hub:5000）
-    local registry_url
-    registry_url=$(sed -n 's/^[[:space:]]*address:[[:space:]]*//p' "$shim_config" | head -n 1 | sed 's|^http://||' | sed 's|^https://||')
+        # 从 image-cri-shim.yaml 提取 auth 字段（格式: username:password）
+        # 使用 sed 而不是 grep -P（BusyBox 不支持）
+        auth_line=$(sed -n 's/^[[:space:]]*auth:[[:space:]]*//p' "$shim_config" | head -n 1)
 
-    if [[ -z "$registry_url" ]]; then
-        log_warn "$shim_config 中未找到 address 配置，使用默认: sealos.hub:5000"
-        registry_url="sealos.hub:5000"
+        if [[ -z "$auth_line" ]]; then
+            log_warn "$shim_config 中未找到 auth 配置"
+            return 0
+        fi
+
+        log_info "从 $shim_config 读取到认证信息"
+
+        # 提取 registry 地址（格式: http://sealos.hub:5000 或 sealos.hub:5000）
+        registry_url=$(sed -n 's/^[[:space:]]*address:[[:space:]]*//p' "$shim_config" | head -n 1 | sed 's|^http://||' | sed 's|^https://||')
+
+        if [[ -z "$registry_url" ]]; then
+            log_warn "$shim_config 中未找到 address 配置，使用默认: sealos.hub:5000"
+            registry_url="sealos.hub:5000"
+        fi
     fi
 
     log_info "目标 registry: $registry_url"
@@ -193,6 +209,15 @@ try:
             images = save_config['images']
             if isinstance(images, list):
                 print(f"export IMAGES='{json.dumps(images)}'")
+        if 'registry_auth' in save_config:
+            registry_auth = save_config['registry_auth']
+            if isinstance(registry_auth, dict):
+                if 'registry' in registry_auth:
+                    print(f"export REGISTRY_AUTH_REGISTRY='{registry_auth['registry']}'")
+                if 'username' in registry_auth:
+                    print(f"export REGISTRY_AUTH_USERNAME='{registry_auth['username']}'")
+                if 'password' in registry_auth:
+                    print(f"export REGISTRY_AUTH_PASSWORD='{registry_auth['password']}'")
 
     if 'load' in config:
         load_config = config['load']
@@ -396,8 +421,8 @@ cmd_save() {
     local config_file="$1"
 
     check_dependencies "save"
-    ensure_docker_config  # 确保 Docker 配置存在
     load_config "$config_file"
+    ensure_docker_config  # 确保 Docker 配置存在（需要在 load_config 之后调用，以获取 registry_auth 配置）
     setup_rclone_config "$RCLONE_REMOTE"
 
     if [[ -z "$IMAGES" ]]; then
@@ -504,8 +529,8 @@ cmd_load() {
     local config_file="$1"
 
     check_dependencies "load"
-    ensure_docker_config  # 确保 Docker 配置存在
     load_config "$config_file"
+    ensure_docker_config  # 确保 Docker 配置存在（需要在 load_config 之后调用，以获取 registry_auth 配置）
 
     # 验证必选配置
     if [[ -z "$DEST_REGISTRY" ]]; then
